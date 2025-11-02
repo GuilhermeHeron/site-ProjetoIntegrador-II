@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - Biblioteca</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+    <main class="main-content no-sidebar">
+        <header class="page-header">
+            <h1>Meu Perfil</h1>
+        </header>
+
+        <!-- Informações do Usuário -->
+        <div class="form-container">
+            <div class="form-header">
+                <h2>Informações Pessoais</h2>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-avatar">
+                    <div class="avatar-circle">
+                        <span class="avatar-text">AS</span>
+                    </div>
+                </div>
+                <div class="user-details">
+                    <h3>Ana Silva</h3>
+                    <p><strong>RA:</strong> 12345</p>
+                    <p><strong>Email:</strong> ana.silva@email.com</p>
+                    <!-- <p><strong>Status:</strong> <span class="status status-available">Ativo</span></p> -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas de Leitura -->
+        <div class="form-container" style="margin-top: 30px;">
+            <div class="form-header">
+                <h2>Minhas Estatísticas</h2>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-content">
+                        <h3>15</h3>
+                        <p>Livros Lidos</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📖</div>
+                    <div class="stat-content">
+                        <h3>3</h3>
+                        <p>Livros Emprestados</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-content">
+                        <h3>Leitor Ativo</h3>
+                        <p>Nível Atual</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-content">
+                        <h3>5</h3>
+                        <p>Conquistas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Livros Emprestados -->
+        <div class="form-container" style="margin-top: 30px;">
+            <div class="form-header">
+                <h2>Meus Livros Emprestados</h2>
+            </div>
+            
+            <div class="my-books-grid">
+                <div class="my-book-card">
+                    <div class="book-info">
+                        <h3>A Grande Aventura</h3>
+                        <p><strong>Autor:</strong> Thomas Vinterberg</p>
+                        <p><strong>Data Empréstimo:</strong> 15/12/2024</p>
+                        <p><strong>Data Devolução:</strong> 22/12/2024</p>
+                        <p><strong>Status:</strong> <span class="status status-loaned">Emprestado</span></p>
+                    </div>
+                    <div class="book-actions">
+                        <button class="btn btn-primary" onclick="renovarLivro('A Grande Aventura')">Renovar</button>
+                        <button class="btn btn-secondary" onclick="devolverLivro('A Grande Aventura')">Devolver</button>
+                    </div>
+                </div>
+
+                <div class="my-book-card">
+                    <div class="book-info">
+                        <h3>Na Natureza Selvagem</h3>
+                        <p><strong>Autor:</strong> Jon Krakauer</p>
+                        <p><strong>Data Empréstimo:</strong> 10/12/2024</p>
+                        <p><strong>Data Devolução:</strong> 17/12/2024</p>
+                        <p><strong>Status:</strong> <span class="status status-loaned">Emprestado</span></p>
+                    </div>
+                    <div class="book-actions">
+                        <button class="btn btn-primary" onclick="renovarLivro('Na Natureza Selvagem')">Renovar</button>
+                        <button class="btn btn-secondary" onclick="devolverLivro('Na Natureza Selvagem')">Devolver</button>
+                    </div>
+                </div>
+
+                <div class="my-book-card">
+                    <div class="book-info">
+                        <h3>O Mundo Perdido</h3>
+                        <p><strong>Autor:</strong> Arthur Conan Doyle</p>
+                        <p><strong>Data Empréstimo:</strong> 08/12/2024</p>
+                        <p><strong>Data Devolução:</strong> 15/12/2024</p>
+                        <p><strong>Status:</strong> <span class="status status-overdue">Atrasado</span></p>
+                    </div>
+                    <div class="book-actions">
+                        <button class="btn btn-primary" onclick="renovarLivro('O Mundo Perdido')">Renovar</button>
+                        <button class="btn btn-secondary" onclick="devolverLivro('O Mundo Perdido')">Devolver</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico de Leitura -->
+        <div class="form-container" style="margin-top: 30px;">
+            <div class="form-header">
+                <h2>Histórico de Leitura</h2>
+            </div>
+            
+            <div class="history-list">
+                <div class="history-item">
+                    <div class="history-icon">✅</div>
+                    <div class="history-content">
+                        <h4>Ciência Hoje</h4>
+                        <p>Devolvido em 12/12/2024</p>
+                    </div>
+                </div>
+                <div class="history-item">
+                    <div class="history-icon">✅</div>
+                    <div class="history-content">
+                        <h4>Revoluções na História</h4>
+                        <p>Devolvido em 10/12/2024</p>
+                    </div>
+                </div>
+                <div class="history-item">
+                    <div class="history-icon">✅</div>
+                    <div class="history-content">
+                        <h4>O Mistério</h4>
+                        <p>Devolvido em 05/12/2024</p>
+                    </div>
+                </div>
+                <div class="history-item">
+                    <div class="history-icon">✅</div>
+                    <div class="history-content">
+                        <h4>História do Tempo</h4>
+                        <p>Devolvido em 01/12/2024</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/perfil.js"></script>
+</body>
+
+</html>

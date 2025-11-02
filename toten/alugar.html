@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alugar Livro - Biblioteca</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+    <main class="main-content no-sidebar">
+        <div class="page-header-simple">
+            <div class="header-container">
+                <a href="index.html" class="back-link">← Voltar ao Acervo</a>
+                <h1>📚 Alugar Livro</h1>
+            </div>
+        </div>
+        
+        <div class="book-details-container">
+            <div class="book-info-card">
+                <div class="book-cover">
+                    <div class="book-icon">📚</div>
+                </div>
+                <div class="book-details">
+                    <h2>A Grande Aventura</h2>
+                    <p><strong>Autor:</strong> Thomas Vinterberg</p>
+                    <p><strong>Categoria:</strong> Ficção</p>
+                    <p><strong>Status:</strong> <span class="status status-available">Disponível</span></p>
+                    <p><strong>Páginas:</strong> 320</p>
+                    <p><strong>Sinopse:</strong> Uma emocionante aventura que leva o leitor a mundos desconhecidos e experiências únicas.</p>
+                </div>
+            </div>
+
+            <div class="rental-info">
+                <h3>Informações do Aluguel</h3>
+                <div class="rental-details">
+                    <p><strong>Data do Aluguel:</strong> 15/12/2024</p>
+                    <p><strong>Data de Devolução:</strong> 22/12/2024</p>
+                    <p><strong>Período:</strong> 7 dias</p>
+                    <p><strong>Aluno:</strong> Ana Silva (RA: 12345)</p>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="cancelarAluguel()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarAluguel()">Confirmar Aluguel</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/alugar.js"></script>
+</body>
+
+</html>

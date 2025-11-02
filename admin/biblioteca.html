@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Gerencial - Biblioteca</title>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">LIBRARY</div>
+        <nav class="navigation-menu">
+            <h3>Área Gerencial</h3>
+            <ul>
+                <li><a class="nav-link active" data-target="cadastro">Cadastro de Livros</a></li>
+                <li><a class="nav-link" data-target="gerenciamento">Gerenciamento de Livros</a></li>
+                <li><a class="nav-link" data-target="relatorios">Relatórios de Leitores</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+
+        <!-- SEÇÃO 1: CADASTRO DE LIVROS -->
+        <section id="cadastro" class="content-section active">
+            <header class="page-header">
+                <h1>Cadastro de Livros</h1>
+            </header>
+            <div class="form-container">
+                <form>
+                    <div class="form-group">
+                        <label for="titulo">Título do Livro</label>
+                        <input type="text" id="titulo" name="titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="autor">Autor</label>
+                        <input type="text" id="autor" name="autor" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria">Categoria</label>
+                        <select id="categoria" name="categoria" required>
+                            <option value="">Selecione...</option>
+                            <option value="Ficção">Ficção</option>
+                            <option value="Não Ficção">Não Ficção</option>
+                            <option value="Ciência">Ciência</option>
+                            <option value="História">História</option>
+                            <option value="Biografia">Biografia</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Cadastrar Livro</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- SEÇÃO 2: GERENCIAMENTO DE LIVROS -->
+        <section id="gerenciamento" class="content-section">
+            <header class="page-header">
+                <h1>Gerenciamento de Livros</h1>
+            </header>
+            <table id="gerenciamentoTable" class="display data-table">
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Autor</th>
+                        <th>Categoria</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados serão carregados dinamicamente do backend -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- SEÇÃO 3: RELATÓRIOS -->
+        <section id="relatorios" class="content-section">
+            <header class="page-header">
+                <h1>Relatório de Classificação dos Leitores</h1>
+            </header>
+            <table id="relatoriosTable" class="display data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome do Leitor</th>
+                        <th>Livros Lidos (Semestre)</th>
+                        <th>Classificação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados serão carregados dinamicamente do backend -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="assets/js/biblioteca.js"></script>
+</body>
+
+</html>
