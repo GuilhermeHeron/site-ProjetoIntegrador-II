@@ -112,7 +112,7 @@ app.post('/login', async (req, res) => {
         // Buscar usuário pelo RA
         const usuarios = await executarQuery(
             `SELECT u.id, u.nome_completo, u.email, u.ra, u.status, 
-                    u.total_livros_lidos, u.nivel_leitor, u.total_conquistas,
+                    u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
                     c.nome AS cargo
              FROM usuarios u
              INNER JOIN cargos c ON u.cargo_id = c.id
@@ -156,7 +156,7 @@ app.post('/login', async (req, res) => {
                 email: usuario.email,
                 ra: usuario.ra,
                 status: usuario.status,
-                total_livros_lidos: usuario.total_livros_lidos,
+                total_livros_emprestados: usuario.total_livros_emprestados,
                 nivel_leitor: usuario.nivel_leitor,
                 total_conquistas: usuario.total_conquistas
             }
@@ -181,7 +181,7 @@ app.get('/usuario/:id', async (req, res) => {
 
         const usuarios = await executarQuery(
             `SELECT u.id, u.nome_completo, u.email, u.ra, u.status, 
-                    u.total_livros_lidos, u.nivel_leitor, u.total_conquistas,
+                    u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
                     c.nome AS cargo
              FROM usuarios u
              INNER JOIN cargos c ON u.cargo_id = c.id
@@ -206,7 +206,7 @@ app.get('/usuario/:id', async (req, res) => {
                 email: usuario.email,
                 ra: usuario.ra,
                 status: usuario.status,
-                total_livros_lidos: usuario.total_livros_lidos,
+                total_livros_emprestados: usuario.total_livros_emprestados,
                 nivel_leitor: usuario.nivel_leitor,
                 total_conquistas: usuario.total_conquistas
             }
@@ -214,6 +214,258 @@ app.get('/usuario/:id', async (req, res) => {
 
     } catch (error) {
         console.error('Erro ao buscar usuário:', error);
+        res.status(500).json({
+            sucesso: false,
+            mensagem: 'Erro interno do servidor',
+            erro: error.message
+        });
+    }
+});
+
+// ============================================
+// ROTA: LISTAR EMPRÉSTIMOS ATIVOS DO USUÁRIO
+// ============================================
+app.get('/emprestimos/:usuario_id', async (req, res) => {
+    try {
+        const { usuario_id } = req.params;
+
+        const emprestimos = await executarQuery(
+            `SELECT 
+                e.id,
+                e.livro_id,
+                l.titulo AS livro_titulo,
+                l.autor AS livro_autor,
+                c.nome AS livro_categoria,
+                l.sinopse,
+                l.numero_paginas,
+                e.data_emprestimo,
+                e.data_devolucao_prevista,
+                e.numero_renovacoes,
+                e.status,
+                DATEDIFF(CURDATE(), e.data_devolucao_prevista) AS dias_atraso
+            FROM emprestimos e
+            INNER JOIN livros l ON e.livro_id = l.id
+            INNER JOIN categorias c ON l.categoria_id = c.id
+            WHERE e.usuario_id = ? AND e.status = 'ATIVO'
+            ORDER BY e.data_devolucao_prevista ASC`,
+            [usuario_id]
+        );
+
+        res.status(200).json({
+            sucesso: true,
+            emprestimos: emprestimos || []
+        });
+
+    } catch (error) {
+        console.error('Erro ao listar empréstimos:', error);
+        res.status(500).json({
+            sucesso: false,
+            mensagem: 'Erro interno do servidor',
+            erro: error.message
+        });
+    }
+});
+
+// ============================================
+// ROTA: HISTÓRICO DE EMPRÉSTIMOS DEVOLVIDOS
+// ============================================
+app.get('/historico/:usuario_id', async (req, res) => {
+    try {
+        const { usuario_id } = req.params;
+
+        const historico = await executarQuery(
+            `SELECT 
+                h.id,
+                h.livro_id,
+                l.titulo AS livro_titulo,
+                l.autor AS livro_autor,
+                c.nome AS livro_categoria,
+                h.data_emprestimo,
+                h.data_devolucao_prevista,
+                h.data_devolucao_real,
+                h.dias_emprestado,
+                h.numero_renovacoes,
+                h.status_final,
+                h.condicao_devolucao
+            FROM historico_emprestimos h
+            INNER JOIN livros l ON h.livro_id = l.id
+            INNER JOIN categorias c ON l.categoria_id = c.id
+            WHERE h.usuario_id = ?
+            ORDER BY h.data_devolucao_real DESC
+            LIMIT 20`,
+            [usuario_id]
+        );
+
+        res.status(200).json({
+            sucesso: true,
+            historico: historico || []
+        });
+
+    } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        res.status(500).json({
+            sucesso: false,
+            mensagem: 'Erro interno do servidor',
+            erro: error.message
+        });
+    }
+});
+
+// ============================================
+// ROTA: RENOVAR EMPRÉSTIMO
+// ============================================
+app.post('/renovar', async (req, res) => {
+    try {
+        const { emprestimo_id } = req.body;
+
+        // Validação
+        if (!emprestimo_id) {
+            return res.status(400).json({
+                sucesso: false,
+                mensagem: 'ID do empréstimo é obrigatório!'
+            });
+        }
+
+        // Buscar o empréstimo
+        const emprestimos = await executarQuery(
+            `SELECT 
+                e.id,
+                e.usuario_id,
+                e.livro_id,
+                e.data_emprestimo,
+                e.data_devolucao_prevista,
+                e.numero_renovacoes,
+                e.status,
+                l.titulo AS livro_titulo,
+                l.autor AS livro_autor
+            FROM emprestimos e
+            INNER JOIN livros l ON e.livro_id = l.id
+            WHERE e.id = ? AND e.status = 'ATIVO'`,
+            [emprestimo_id]
+        );
+
+        if (!emprestimos || emprestimos.length === 0) {
+            return res.status(404).json({
+                sucesso: false,
+                mensagem: 'Empréstimo não encontrado ou já foi devolvido!'
+            });
+        }
+
+        const emprestimo = emprestimos[0];
+
+        // Verificar se já renovou 3 vezes (limite)
+        if (emprestimo.numero_renovacoes >= 3) {
+            return res.status(400).json({
+                sucesso: false,
+                mensagem: 'Limite de renovações atingido! Máximo de 3 renovações por empréstimo.'
+            });
+        }
+
+        // Calcular nova data de devolução (7 dias a partir da data atual)
+        const hoje = new Date();
+        const novaDataDevolucao = new Date(hoje);
+        novaDataDevolucao.setDate(hoje.getDate() + 7);
+
+        // Formatar data para MySQL
+        const formatarDataMySQL = (data) => {
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        };
+
+        // Atualizar empréstimo
+        await executarQuery(
+            `UPDATE emprestimos 
+             SET data_devolucao_prevista = ?,
+                 data_renovacao = ?,
+                 numero_renovacoes = numero_renovacoes + 1
+             WHERE id = ?`,
+            [
+                formatarDataMySQL(novaDataDevolucao),
+                formatarDataMySQL(hoje),
+                emprestimo_id
+            ]
+        );
+
+        res.status(200).json({
+            sucesso: true,
+            mensagem: 'Empréstimo renovado com sucesso!',
+            renovacao: {
+                emprestimo_id: emprestimo.id,
+                livro_titulo: emprestimo.livro_titulo,
+                livro_autor: emprestimo.livro_autor,
+                nova_data_devolucao: formatarDataMySQL(novaDataDevolucao),
+                numero_renovacoes: emprestimo.numero_renovacoes + 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Erro ao renovar empréstimo:', error);
+        res.status(500).json({
+            sucesso: false,
+            mensagem: 'Erro interno do servidor ao renovar empréstimo',
+            erro: error.message
+        });
+    }
+});
+
+// ============================================
+// ROTA: ESTATÍSTICAS DO USUÁRIO
+// ============================================
+app.get('/estatisticas/:usuario_id', async (req, res) => {
+    try {
+        const { usuario_id } = req.params;
+
+        // Buscar dados do usuário
+        const usuarios = await executarQuery(
+            `SELECT 
+                u.id,
+                u.nome_completo,
+                u.total_livros_emprestados,
+                u.nivel_leitor,
+                u.total_conquistas
+            FROM usuarios u
+            WHERE u.id = ?`,
+            [usuario_id]
+        );
+
+        if (!usuarios || usuarios.length === 0) {
+            return res.status(404).json({
+                sucesso: false,
+                mensagem: 'Usuário não encontrado!'
+            });
+        }
+
+        const usuario = usuarios[0];
+
+        // Contar empréstimos ativos
+        const emprestimosAtivos = await executarQuery(
+            `SELECT COUNT(*) AS total FROM emprestimos 
+             WHERE usuario_id = ? AND status = 'ATIVO'`,
+            [usuario_id]
+        );
+
+        // Contar livros devolvidos (histórico)
+        const livrosDevolvidos = await executarQuery(
+            `SELECT COUNT(*) AS total FROM historico_emprestimos 
+             WHERE usuario_id = ?`,
+            [usuario_id]
+        );
+
+        res.status(200).json({
+            sucesso: true,
+            estatisticas: {
+                total_livros_emprestados: usuario.total_livros_emprestados || 0,
+                livros_emprestados_atualmente: emprestimosAtivos[0]?.total || 0,
+                livros_devolvidos: livrosDevolvidos[0]?.total || 0,
+                nivel_leitor: usuario.nivel_leitor,
+                total_conquistas: usuario.total_conquistas || 0
+            }
+        });
+
+    } catch (error) {
+        console.error('Erro ao buscar estatísticas:', error);
         res.status(500).json({
             sucesso: false,
             mensagem: 'Erro interno do servidor',
@@ -234,5 +486,9 @@ app.listen(PORT, () => {
     console.log(`   POST http://localhost:${PORT}/cadastro`);
     console.log(`   POST http://localhost:${PORT}/login`);
     console.log(`   GET  http://localhost:${PORT}/usuario/:id`);
+    console.log(`   GET  http://localhost:${PORT}/emprestimos/:usuario_id`);
+    console.log(`   GET  http://localhost:${PORT}/historico/:usuario_id`);
+    console.log(`   POST http://localhost:${PORT}/renovar`);
+    console.log(`   GET  http://localhost:${PORT}/estatisticas/:usuario_id`);
 });
 

@@ -9,8 +9,10 @@
     "dev:aluno": "node aluno/backend/server.js",
     "start:admin": "node admin/backend/server.js",
     "dev:admin": "node admin/backend/server.js",
-    "start": "concurrently \"npm run start:aluno\" \"npm run start:admin\"",
-    "dev": "concurrently \"npm run dev:aluno\" \"npm run dev:admin\""
+    "start:totem": "node toten/backend/server.js",
+    "dev:totem": "node toten/backend/server.js",
+    "start": "concurrently \"npm run start:aluno\" \"npm run start:admin\" \"npm run start:totem\"",
+    "dev": "concurrently \"npm run dev:aluno\" \"npm run dev:admin\" \"npm run dev:totem\""
   },
   "keywords": [
     "biblioteca",

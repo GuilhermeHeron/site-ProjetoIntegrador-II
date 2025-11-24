@@ -55,12 +55,16 @@ startServer('ALUNO', path.join(__dirname, 'aluno/backend/server.js'), 3001, colo
 // Iniciar servidor do admin (porta 3002)
 startServer('ADMIN', path.join(__dirname, 'admin/backend/server.js'), 3002, colors.blue);
 
+// Iniciar servidor do totem (porta 3003)
+startServer('TOTEM', path.join(__dirname, 'toten/backend/server.js'), 3003, colors.yellow);
+
 // Aguardar um pouco para os servidores iniciarem
 setTimeout(() => {
     console.log(`\n${colors.bright}${colors.green}✅ Todos os servidores foram iniciados!${colors.reset}\n`);
     console.log(`${colors.bright}📡 Servidores rodando:${colors.reset}`);
     console.log(`${colors.green}   • Aluno: http://localhost:3001${colors.reset}`);
     console.log(`${colors.blue}   • Admin: http://localhost:3002${colors.reset}`);
+    console.log(`${colors.yellow}   • Totem: http://localhost:3003${colors.reset}`);
     console.log(`\n${colors.yellow}💡 Pressione Ctrl+C para parar todos os servidores${colors.reset}\n`);
 }, 2000);
 

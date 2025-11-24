@@ -14,8 +14,34 @@
 <body class="login-page">
     <div class="main-container">
 
-        <!-- TELA DE CADASTRO (INICIALMENTE VISÍVEL) -->
-        <div id="register-form" class="form-container">
+        <!-- TELA DE LOGIN (INICIALMENTE VISÍVEL) -->
+        <div id="login-form" class="form-container">
+            <div class="form-header">
+                <div class="header-logo">
+                    <img src="assets/img/livro.png" alt="Ícone de Livros">
+                    <h1>BIBLIOTECA</h1>
+                </div>
+            </div>
+
+            <div class="form-banner">
+                <h2>LOGIN DE ALUNO</h2>
+            </div>
+
+            <form class="form-body">
+                <div class="input-group">
+                    <label for="login-ra">RA (Registro Acadêmico)</label>
+                    <input type="text" id="login-ra" placeholder="Digite seu RA" required>
+                </div>
+                <button type="submit" class="btn-submit">ENTRAR</button>
+            </form>
+
+            <div class="form-footer">
+                <p>Não tem uma conta? <a href="#" id="show-register">Cadastre-se</a></p>
+            </div>
+        </div>
+
+        <!-- TELA DE CADASTRO (INICIALMENTE OCULTA) -->
+        <div id="register-form" class="form-container hidden">
             <div class="form-header">
                 <div class="header-logo">
                     <img src="assets/img/livro.png" alt="Ícone de Livros">
@@ -45,32 +71,6 @@
 
             <div class="form-footer">
                 <p>Já tem uma conta? <a href="#" id="show-login">Faça login</a></p>
-            </div>
-        </div>
-
-        <!-- TELA DE LOGIN (INICIALMENTE OCULTA) -->
-        <div id="login-form" class="form-container hidden">
-            <div class="form-header">
-                <div class="header-logo">
-                    <img src="assets/img/livro.png" alt="Ícone de Livros">
-                    <h1>BIBLIOTECA</h1>
-                </div>
-            </div>
-
-            <div class="form-banner">
-                <h2>LOGIN DE ALUNO</h2>
-            </div>
-
-            <form class="form-body">
-                <div class="input-group">
-                    <label for="login-ra">RA (Registro Acadêmico)</label>
-                    <input type="text" id="login-ra" placeholder="Digite seu RA" required>
-                </div>
-                <button type="submit" class="btn-submit">ENTRAR</button>
-            </form>
-
-            <div class="form-footer">
-                <p>Não tem uma conta? <a href="#" id="show-register">Cadastre-se</a></p>
             </div>
         </div>
 

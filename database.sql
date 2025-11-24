@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     ra VARCHAR(50) NOT NULL UNIQUE COMMENT 'Registro Acadêmico ou identificador único',
     cargo_id INT NOT NULL,
     status ENUM('ATIVO', 'INATIVO', 'SUSPENSO') DEFAULT 'ATIVO',
-    total_livros_lidos INT DEFAULT 0 COMMENT 'Contador de livros lidos (histórico)',
+    total_livros_emprestados INT DEFAULT 0 COMMENT 'Contador de livros emprestados (total de empréstimos realizados)',
     nivel_leitor ENUM('INICIANTE', 'REGULAR', 'ATIVO', 'EXTREMO') DEFAULT 'INICIANTE',
     total_conquistas INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -168,33 +168,30 @@ CREATE TABLE IF NOT EXISTS usuario_conquistas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
--- CONQUISTAS PADRÃO
+-- CONQUISTAS PADRÃO (Apenas níveis de leitor baseados em livros emprestados)
 -- =====================================================
 INSERT INTO conquistas (nome, descricao, icone, criterio) VALUES
-('Primeiro Passo', 'Alugou o primeiro livro', '📖', '1 livro emprestado'),
-('Leitor Iniciante', 'Leu 5 livros', '📚', '5 livros lidos'),
-('Leitor Regular', 'Leu 10 livros', '📖📖', '10 livros lidos'),
-('Leitor Ativo', 'Leu 15 livros', '⭐', '15 livros lidos'),
-('Leitor Extremo', 'Leu 25 livros', '🏆', '25 livros lidos'),
-('Sem Atrasos', 'Nunca atrasou uma devolução', '✅', '10 empréstimos sem atraso'),
-('Fiel', 'Devolveu 20 livros', '💎', '20 livros devolvidos');
+('Leitor Iniciante', 'Emprestou até 5 livros', '🌱', '5 livros emprestados'),
+('Leitor Regular', 'Emprestou até 10 livros', '📚', '10 livros emprestados'),
+('Leitor Ativo', 'Emprestou até 20 livros', '⭐', '20 livros emprestados'),
+('Leitor Extremo', 'Emprestou mais de 20 livros', '🏆', 'Mais de 20 livros emprestados');
 
 -- =====================================================
 -- TRIGGERS PARA ATUALIZAÇÃO AUTOMÁTICA
 -- =====================================================
 
--- Trigger: Atualizar contador de livros lidos quando empréstimo é movido para histórico
+-- Trigger: Atualizar contador de livros emprestados e nível do leitor quando um empréstimo é criado
 DELIMITER $$
 
-CREATE TRIGGER atualizar_livros_lidos AFTER INSERT ON historico_emprestimos
+CREATE TRIGGER atualizar_livros_emprestados AFTER INSERT ON emprestimos
 FOR EACH ROW
 BEGIN
     UPDATE usuarios 
-    SET total_livros_lidos = total_livros_lidos + 1,
+    SET total_livros_emprestados = total_livros_emprestados + 1,
         nivel_leitor = CASE
-            WHEN total_livros_lidos + 1 >= 25 THEN 'EXTREMO'
-            WHEN total_livros_lidos + 1 >= 15 THEN 'ATIVO'
-            WHEN total_livros_lidos + 1 >= 10 THEN 'REGULAR'
+            WHEN total_livros_emprestados + 1 > 20 THEN 'EXTREMO'
+            WHEN total_livros_emprestados + 1 > 10 THEN 'ATIVO'
+            WHEN total_livros_emprestados + 1 > 5 THEN 'REGULAR'
             ELSE 'INICIANTE'
         END
     WHERE id = NEW.usuario_id;
@@ -251,7 +248,7 @@ SELECT
     u.ra,
     u.email,
     cg.nome AS cargo,
-    u.total_livros_lidos,
+    u.total_livros_emprestados,
     u.nivel_leitor,
     u.total_conquistas,
     COUNT(DISTINCT e.id) AS livros_emprestados_atualmente,
@@ -260,22 +257,22 @@ FROM usuarios u
 INNER JOIN cargos cg ON u.cargo_id = cg.id
 LEFT JOIN emprestimos e ON u.id = e.usuario_id AND e.status = 'ATIVO'
 LEFT JOIN historico_emprestimos h ON u.id = h.usuario_id
-GROUP BY u.id, u.nome_completo, u.ra, u.email, cg.nome, u.total_livros_lidos, u.nivel_leitor, u.total_conquistas;
+GROUP BY u.id, u.nome_completo, u.ra, u.email, cg.nome, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas;
 
 -- View: Relatório de classificação de leitores (para painel admin)
 CREATE OR REPLACE VIEW vw_classificacao_leitores AS
 SELECT 
     u.id,
     u.nome_completo AS nome_leitor,
-    u.total_livros_lidos AS livros_lidos_semestre,
+    u.total_livros_emprestados AS livros_emprestados_total,
     u.nivel_leitor AS classificacao,
-    COUNT(DISTINCT h.id) AS total_emprestimos,
+    COUNT(DISTINCT h.id) AS total_devolvidos,
     COUNT(DISTINCT CASE WHEN h.status_final = 'ATRASADO' THEN h.id END) AS emprestimos_atrasados
 FROM usuarios u
 LEFT JOIN historico_emprestimos h ON u.id = h.usuario_id
 WHERE u.cargo_id = (SELECT id FROM cargos WHERE nome = 'ALUNO')
-GROUP BY u.id, u.nome_completo, u.total_livros_lidos, u.nivel_leitor
-ORDER BY u.total_livros_lidos DESC;
+GROUP BY u.id, u.nome_completo, u.total_livros_emprestados, u.nivel_leitor
+ORDER BY u.total_livros_emprestados DESC;
 
 -- View: Livros disponíveis para aluguel
 CREATE OR REPLACE VIEW vw_livros_disponiveis AS
@@ -299,17 +296,6 @@ GROUP BY l.id, l.titulo, l.autor, c.nome, l.sinopse, l.numero_paginas, l.codigo_
 -- DADOS DE EXEMPLO (OPCIONAL - PARA TESTES)
 -- =====================================================
 
--- Exemplo de usuário admin
-INSERT INTO usuarios (nome_completo, email, ra, cargo_id, nivel_leitor) VALUES
-('Administrador', 'admin@biblioteca.com', 'ADM001', (SELECT id FROM cargos WHERE nome = 'ADMIN'), 'ATIVO');
-
--- Exemplo de usuários alunos
-INSERT INTO usuarios (nome_completo, email, ra, cargo_id, total_livros_lidos, nivel_leitor) VALUES
-('Ana Silva', 'ana.silva@email.com', '12345', (SELECT id FROM cargos WHERE nome = 'ALUNO'), 15, 'ATIVO'),
-('Carlos Pereira', 'carlos.pereira@email.com', '67890', (SELECT id FROM cargos WHERE nome = 'ALUNO'), 25, 'EXTREMO'),
-('Mariana Costa', 'mariana.costa@email.com', '11111', (SELECT id FROM cargos WHERE nome = 'ALUNO'), 8, 'REGULAR'),
-('João Mendes', 'joao.mendes@email.com', '22222', (SELECT id FROM cargos WHERE nome = 'ALUNO'), 4, 'INICIANTE');
-
 -- Exemplo de livros (múltiplos exemplares do mesmo livro)
 INSERT INTO livros (titulo, autor, categoria_id, sinopse, numero_paginas, codigo_exemplar) VALUES
 ('A Grande Aventura', 'Thomas Vinterberg', (SELECT id FROM categorias WHERE nome = 'Ficção'), 
@@ -330,18 +316,6 @@ INSERT INTO livros (titulo, autor, categoria_id, sinopse, numero_paginas, codigo
  'Uma análise das descobertas científicas mais recentes.', 450, 'CIE-002-01'),
 ('Revoluções na História', 'Maria Alvez', (SELECT id FROM categorias WHERE nome = 'História'), 
  'Um estudo sobre as principais revoluções que marcaram a história.', 380, 'HIS-001-01');
-
--- Exemplo de empréstimos ativos
-INSERT INTO emprestimos (usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, status) VALUES
-((SELECT id FROM usuarios WHERE ra = '12345'), 
- (SELECT id FROM livros WHERE codigo_exemplar = 'FIC-001-01'), 
- '2024-12-15', '2024-12-22', 'ATIVO'),
-((SELECT id FROM usuarios WHERE ra = '12345'), 
- (SELECT id FROM livros WHERE codigo_exemplar = 'NFC-001-01'), 
- '2024-12-10', '2024-12-17', 'ATIVO'),
-((SELECT id FROM usuarios WHERE ra = '12345'), 
- (SELECT id FROM livros WHERE codigo_exemplar = 'FIC-002-01'), 
- '2024-12-08', '2024-12-15', 'ATIVO');
 
 -- =====================================================
 -- ÍNDICES ADICIONAIS PARA PERFORMANCE

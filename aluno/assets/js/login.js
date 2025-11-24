@@ -153,9 +153,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Salva dados do usuário no localStorage
                 localStorage.setItem('usuario', JSON.stringify(data.usuario));
                 
-                // Redireciona após 1 segundo
+                // Limpa qualquer flag do totem (pois estamos no login do aluno)
+                localStorage.removeItem('acao_totem');
+                localStorage.removeItem('livro_selecionado');
+                
+                // Redireciona para perfil.html após 1 segundo
                 setTimeout(() => {
-                    window.location.href = 'livros.html';
+                    window.location.href = 'perfil.html';
                 }, 1000);
             } else {
                 // Erro no login

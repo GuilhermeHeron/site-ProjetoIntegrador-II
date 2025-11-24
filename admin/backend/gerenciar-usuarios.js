@@ -16,7 +16,7 @@ router.get('/listar', async (req, res) => {
 
         let query = `
             SELECT u.id, u.nome_completo, u.email, u.ra, cg.nome AS cargo, 
-                   u.status, u.total_livros_lidos, u.nivel_leitor, u.total_conquistas,
+                   u.status, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
                    u.created_at
             FROM usuarios u
             INNER JOIN cargos cg ON u.cargo_id = cg.id
@@ -72,7 +72,7 @@ router.get('/buscar/:id', async (req, res) => {
 
         const usuarios = await executarQuery(
             `SELECT u.id, u.nome_completo, u.email, u.ra, cg.id AS cargo_id, cg.nome AS cargo, 
-                    u.status, u.total_livros_lidos, u.nivel_leitor, u.total_conquistas,
+                    u.status, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
                     u.created_at
              FROM usuarios u
              INNER JOIN cargos cg ON u.cargo_id = cg.id
@@ -214,7 +214,7 @@ router.put('/editar/:id', async (req, res) => {
         // Buscar o usuário atualizado
         const usuarioAtualizado = await executarQuery(
             `SELECT u.id, u.nome_completo, u.email, u.ra, cg.nome AS cargo, 
-                    u.status, u.total_livros_lidos, u.nivel_leitor, u.total_conquistas
+                    u.status, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas
              FROM usuarios u
              INNER JOIN cargos cg ON u.cargo_id = cg.id
              WHERE u.id = ?`,
