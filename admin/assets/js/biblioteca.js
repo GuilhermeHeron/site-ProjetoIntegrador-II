@@ -24,7 +24,8 @@ $(document).ready(function () {
         $('.nav-link').removeClass('active');
         $('.content-section').removeClass('active');
         $(this).addClass('active');
-        $('#' + $(this).data('target')).addClass('active');
+        const targetSection = $('#' + $(this).data('target'));
+        targetSection.addClass('active');
 
         // Limpar formulário ao trocar de aba (se estava em modo edição)
         const form = $('#cadastro form');
@@ -35,13 +36,15 @@ $(document).ready(function () {
             submitBtn.text('Cadastrar Livro').removeClass('btn-warning').addClass('btn-primary');
         }
 
-        // Recarregar dados quando mudar de aba
+        // Recarregar dados quando mudar de aba - usar requestAnimationFrame para garantir que a seção está visível
         const target = $(this).data('target');
-        if (target === 'gerenciamento') {
-            carregarLivros();
-        } else if (target === 'relatorios') {
-            carregarRelatorios();
-        }
+        requestAnimationFrame(() => {
+            if (target === 'gerenciamento' && targetSection.hasClass('active') && targetSection.is(':visible')) {
+                carregarLivros();
+            } else if (target === 'relatorios' && targetSection.hasClass('active') && targetSection.is(':visible')) {
+                carregarRelatorios();
+            }
+        });
     });
 
     // --- CADASTRO DE LIVROS ---
@@ -139,6 +142,19 @@ async function carregarCategorias() {
 
 async function carregarLivros() {
     try {
+        // Destruir DataTable se já existir ANTES de fazer a requisição
+        if (dataTableGerenciamento) {
+            try {
+                dataTableGerenciamento.destroy();
+            } catch (e) {
+                console.log('DataTable já estava destruído ou não existia');
+            }
+            dataTableGerenciamento = null;
+        }
+
+        const tbody = $('#gerenciamentoTable tbody');
+        tbody.empty();
+
         console.log('Carregando livros do backend...');
         const response = await fetch(`${API_URL}/livros/listar`);
         
@@ -150,19 +166,6 @@ async function carregarLivros() {
         console.log('Dados recebidos:', data);
 
         if (data.sucesso && data.livros && data.livros.length > 0) {
-            // Destruir DataTable se já existir
-            if (dataTableGerenciamento) {
-                try {
-                    dataTableGerenciamento.destroy();
-                } catch (e) {
-                    console.log('DataTable já estava destruído ou não existia');
-                }
-                dataTableGerenciamento = null;
-            }
-
-            const tbody = $('#gerenciamentoTable tbody');
-            tbody.empty();
-
             // Adicionar linhas
             data.livros.forEach(livro => {
                 const row = `
@@ -179,9 +182,83 @@ async function carregarLivros() {
                 tbody.append(row);
             });
 
-            // Aguardar um pouco para garantir que o DOM foi atualizado
-            setTimeout(() => {
-                // Recriar DataTable
+            // Usar requestAnimationFrame para garantir que o DOM foi atualizado e a seção está visível
+            requestAnimationFrame(() => {
+                // Verificar se a seção está visível antes de inicializar
+                const section = $('#gerenciamento');
+                if (section.hasClass('active') && section.is(':visible')) {
+                    // Recriar DataTable
+                    dataTableGerenciamento = $('#gerenciamentoTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Página _PAGE_ de _PAGES_",
+                            paginate: {
+                                next: "Próximo",
+                                previous: "Anterior"
+                            }
+                        },
+                        columnDefs: [{
+                            orderable: false,
+                            targets: 3
+                        }],
+                        retrieve: true,
+                        destroy: true
+                    });
+
+                    // Adicionar eventos aos botões usando delegación de eventos
+                    $(document).off('click', '.btn-editar').on('click', '.btn-editar', function() {
+                        const livroId = $(this).data('id');
+                        editarLivro(livroId);
+                    });
+
+                    $(document).off('click', '.btn-excluir').on('click', '.btn-excluir', function() {
+                        const livroId = $(this).data('id');
+                        excluirLivro(livroId);
+                    });
+                    
+                    console.log(`${data.livros.length} livro(s) carregado(s) e exibidos com sucesso!`);
+                }
+            });
+        } else {
+            console.log('Nenhum livro encontrado ou resposta inválida');
+            
+            // Usar requestAnimationFrame para garantir que a seção está visível
+            requestAnimationFrame(() => {
+                const section = $('#gerenciamento');
+                if (section.hasClass('active') && section.is(':visible')) {
+                    // Recriar DataTable vazia
+                    if (dataTableGerenciamento) {
+                        dataTableGerenciamento.destroy();
+                    }
+                    
+                    dataTableGerenciamento = $('#gerenciamentoTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Página _PAGE_ de _PAGES_",
+                            paginate: {
+                                next: "Próximo",
+                                previous: "Anterior"
+                            },
+                            emptyTable: "Nenhum livro cadastrado"
+                        },
+                        columnDefs: [{
+                            orderable: false,
+                            targets: 3
+                        }]
+                    });
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar livros:', error);
+        mostrarMensagem('gerenciamento', `Erro ao carregar livros: ${error.message}. Verifique se o backend está rodando na porta 3002!`, 'erro');
+        
+        // Manter DataTable mesmo com erro
+        requestAnimationFrame(() => {
+            const section = $('#gerenciamento');
+            if (section.hasClass('active') && section.is(':visible') && !dataTableGerenciamento) {
                 dataTableGerenciamento = $('#gerenciamentoTable').DataTable({
                     language: {
                         search: "Buscar:",
@@ -190,79 +267,16 @@ async function carregarLivros() {
                         paginate: {
                             next: "Próximo",
                             previous: "Anterior"
-                        }
+                        },
+                        emptyTable: "Erro ao carregar dados"
                     },
                     columnDefs: [{
                         orderable: false,
                         targets: 3
-                    }],
-                    retrieve: true,
-                    destroy: true
+                    }]
                 });
-
-                // Adicionar eventos aos botões usando delegación de eventos
-                $(document).off('click', '.btn-editar').on('click', '.btn-editar', function() {
-                    const livroId = $(this).data('id');
-                    editarLivro(livroId);
-                });
-
-                $(document).off('click', '.btn-excluir').on('click', '.btn-excluir', function() {
-                    const livroId = $(this).data('id');
-                    excluirLivro(livroId);
-                });
-                
-                console.log(`${data.livros.length} livro(s) carregado(s) e exibidos com sucesso!`);
-            }, 100);
-        } else {
-            console.log('Nenhum livro encontrado ou resposta inválida');
-            const tbody = $('#gerenciamentoTable tbody');
-            tbody.empty();
-            
-            // Recriar DataTable vazia
-            if (dataTableGerenciamento) {
-                dataTableGerenciamento.destroy();
             }
-            
-            dataTableGerenciamento = $('#gerenciamentoTable').DataTable({
-                language: {
-                    search: "Buscar:",
-                    lengthMenu: "Mostrar _MENU_ registros",
-                    info: "Página _PAGE_ de _PAGES_",
-                    paginate: {
-                        next: "Próximo",
-                        previous: "Anterior"
-                    },
-                    emptyTable: "Nenhum livro cadastrado"
-                },
-                columnDefs: [{
-                    orderable: false,
-                    targets: 3
-                }]
-            });
-        }
-    } catch (error) {
-        console.error('Erro ao carregar livros:', error);
-        mostrarMensagem('gerenciamento', `Erro ao carregar livros: ${error.message}. Verifique se o backend está rodando na porta 3002!`, 'erro');
-        
-        // Manter DataTable mesmo com erro
-        if (!dataTableGerenciamento) {
-            dataTableGerenciamento = $('#gerenciamentoTable').DataTable({
-                language: {
-                    search: "Buscar:",
-                    lengthMenu: "Mostrar _MENU_ registros",
-                    info: "Página _PAGE_ de _PAGES_",
-                    paginate: {
-                        next: "Próximo",
-                        previous: "Anterior"
-                    },
-                    emptyTable: "Erro ao carregar dados"
-                },
-                columnDefs: [{
-                    orderable: false,
-                    targets: 3
-                }]
-            });
-        }
+        });
     }
 }
 
@@ -368,13 +382,23 @@ async function excluirLivro(id) {
 
 async function carregarRelatorios() {
     try {
+        // Destruir DataTable se já existir ANTES de fazer a requisição
+        if (dataTableRelatorios) {
+            try {
+                dataTableRelatorios.destroy();
+            } catch (e) {
+                console.log('DataTable de relatórios já estava destruído ou não existia');
+            }
+            dataTableRelatorios = null;
+        }
+
+        const tbody = $('#relatoriosTable tbody');
+        tbody.empty();
+
         const response = await fetch(`${API_URL}/usuarios/relatorios`);
         const data = await response.json();
 
         if (data.sucesso && data.relatorio) {
-            const tbody = $('#relatoriosTable tbody');
-            tbody.empty();
-
             data.relatorio.forEach(item => {
                 const badgeClass = item.classificacao === 'EXTREMO' ? 'level-extremo' :
                                   item.classificacao === 'ATIVO' ? 'level-ativo' :
@@ -384,33 +408,35 @@ async function carregarRelatorios() {
                     <tr>
                         <td>${item.id}</td>
                         <td>${item.nome_leitor}</td>
-                        <td>${item.livros_lidos_semestre}</td>
+                        <td>${item.livros_emprestados_total || 0}</td>
                         <td><span class="level-badge ${badgeClass}">${item.classificacao}</span></td>
                     </tr>
                 `;
                 tbody.append(row);
             });
 
-            // Recriar DataTable
-            if (dataTableRelatorios) {
-                dataTableRelatorios.destroy();
-            }
-            
-            dataTableRelatorios = $('#relatoriosTable').DataTable({
-                language: {
-                    search: "Buscar:",
-                    lengthMenu: "Mostrar _MENU_ registros",
-                    info: "Página _PAGE_ de _PAGES_",
-                    paginate: {
-                        next: "Próximo",
-                        previous: "Anterior"
-                    }
-                },
-                order: [[2, "desc"]], // Ordenar por livros lidos (descendente)
-                columnDefs: [{
-                    orderable: false,
-                    targets: 3
-                }]
+            // Usar requestAnimationFrame para garantir que o DOM foi atualizado e a seção está visível
+            requestAnimationFrame(() => {
+                const section = $('#relatorios');
+                if (section.hasClass('active') && section.is(':visible')) {
+                    // Recriar DataTable
+                    dataTableRelatorios = $('#relatoriosTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Página _PAGE_ de _PAGES_",
+                            paginate: {
+                                next: "Próximo",
+                                previous: "Anterior"
+                            }
+                        },
+                        order: [[2, "desc"]], // Ordenar por livros lidos (descendente)
+                        columnDefs: [{
+                            orderable: false,
+                            targets: 3
+                        }]
+                    });
+                }
             });
         }
     } catch (error) {

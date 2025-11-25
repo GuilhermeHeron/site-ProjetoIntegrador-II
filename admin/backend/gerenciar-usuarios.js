@@ -244,7 +244,7 @@ router.put('/editar/:id', async (req, res) => {
 router.get('/relatorios', async (req, res) => {
     try {
         const relatorio = await executarQuery(
-            `SELECT * FROM vw_classificacao_leitores ORDER BY livros_lidos_semestre DESC`
+            `SELECT * FROM vw_classificacao_leitores ORDER BY livros_emprestados_total DESC`
         );
 
         res.status(200).json({
