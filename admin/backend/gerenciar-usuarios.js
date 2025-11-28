@@ -15,11 +15,10 @@ router.get('/listar', async (req, res) => {
         const { busca, cargo, status } = req.query;
 
         let query = `
-            SELECT u.id, u.nome_completo, u.email, u.ra, cg.nome AS cargo, 
+            SELECT u.id, u.nome_completo, u.email, u.ra,
                    u.status, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
                    u.created_at
             FROM usuarios u
-            INNER JOIN cargos cg ON u.cargo_id = cg.id
             WHERE 1=1
         `;
         const params = [];
@@ -28,12 +27,6 @@ router.get('/listar', async (req, res) => {
         if (busca) {
             query += ` AND (u.nome_completo LIKE ? OR u.email LIKE ? OR u.ra LIKE ?)`;
             params.push(`%${busca}%`, `%${busca}%`, `%${busca}%`);
-        }
-
-        // Filtro por cargo
-        if (cargo) {
-            query += ` AND cg.nome = ?`;
-            params.push(cargo);
         }
 
         // Filtro por status
@@ -71,11 +64,10 @@ router.get('/buscar/:id', async (req, res) => {
         const { id } = req.params;
 
         const usuarios = await executarQuery(
-            `SELECT u.id, u.nome_completo, u.email, u.ra, cg.id AS cargo_id, cg.nome AS cargo, 
+            `SELECT u.id, u.nome_completo, u.email, u.ra,
                     u.status, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
                     u.created_at
              FROM usuarios u
-             INNER JOIN cargos cg ON u.cargo_id = cg.id
              WHERE u.id = ?`,
             [id]
         );
@@ -109,7 +101,7 @@ router.get('/buscar/:id', async (req, res) => {
 router.put('/editar/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome_completo, email, ra, cargo, status } = req.body;
+        const { nome_completo, email, ra, status } = req.body;
 
         // Verificar se o usuário existe
         const usuariosExistentes = await executarQuery(
@@ -122,24 +114,6 @@ router.put('/editar/:id', async (req, res) => {
                 sucesso: false,
                 mensagem: 'Usuário não encontrado!'
             });
-        }
-
-        // Buscar o ID do cargo se foi fornecido
-        let cargo_id = null;
-        if (cargo) {
-            const cargos = await executarQuery(
-                'SELECT id FROM cargos WHERE nome = ?',
-                [cargo]
-            );
-
-            if (!cargos || cargos.length === 0) {
-                return res.status(400).json({
-                    sucesso: false,
-                    mensagem: 'Cargo não encontrado!'
-                });
-            }
-
-            cargo_id = cargos[0].id;
         }
 
         // Construir query de atualização dinâmica
@@ -187,11 +161,6 @@ router.put('/editar/:id', async (req, res) => {
             valoresAtualizar.push(ra);
         }
 
-        if (cargo_id) {
-            camposAtualizar.push('cargo_id = ?');
-            valoresAtualizar.push(cargo_id);
-        }
-
         if (status) {
             camposAtualizar.push('status = ?');
             valoresAtualizar.push(status);
@@ -213,10 +182,9 @@ router.put('/editar/:id', async (req, res) => {
 
         // Buscar o usuário atualizado
         const usuarioAtualizado = await executarQuery(
-            `SELECT u.id, u.nome_completo, u.email, u.ra, cg.nome AS cargo, 
+            `SELECT u.id, u.nome_completo, u.email, u.ra,
                     u.status, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas
              FROM usuarios u
-             INNER JOIN cargos cg ON u.cargo_id = cg.id
              WHERE u.id = ?`,
             [id]
         );
@@ -284,31 +252,6 @@ router.get('/estatisticas', async (req, res) => {
         res.status(500).json({
             sucesso: false,
             mensagem: 'Erro interno do servidor ao buscar estatísticas',
-            erro: error.message
-        });
-    }
-});
-
-/**
- * GET /usuarios/cargos
- * Lista todos os cargos disponíveis
- */
-router.get('/cargos', async (req, res) => {
-    try {
-        const cargos = await executarQuery(
-            'SELECT id, nome, descricao FROM cargos ORDER BY nome'
-        );
-
-        res.status(200).json({
-            sucesso: true,
-            cargos: cargos
-        });
-
-    } catch (error) {
-        console.error('Erro ao buscar cargos:', error);
-        res.status(500).json({
-            sucesso: false,
-            mensagem: 'Erro interno do servidor ao buscar cargos',
             erro: error.message
         });
     }

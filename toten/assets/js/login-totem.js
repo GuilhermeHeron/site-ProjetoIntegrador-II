@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Redireciona para a página de devolução do totem
                         window.location.href = 'devolver.html';
                     } else if (livroSelecionado) {
-                        // Se há livro selecionado, redireciona para a página de alugar do totem
+                        // Se há livro selecionado, redireciona para a página de retirar do totem
                         window.location.href = 'alugar.html';
                     } else {
                         // Caso padrão, redireciona para livros

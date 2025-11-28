@@ -1,83 +1,152 @@
 $(document).ready(function() {
-    // --- DADOS DO ALUNO LOGADO (EXEMPLO HARD-CODED) ---
-    const loggedInStudent = {
-        name: "Ana Silva",
-        // >>> MUDE ESTE NÚMERO PARA TESTAR OS NÍVEIS <<<
-        booksReadSemester:55 
-    };
+    
+    const API_URL = 'http://localhost:3001';
 
-    // --- FUNÇÃO PARA ATUALIZAR O WIDGET DE GAMIFICAÇÃO ---
-    function updateGamificationWidget(booksRead) {
+    
+    function updateGamificationWidget(nivelLeitor, livrosLidos) {
         let levelName = '';
         let icon = '';
         let levelClass = '';
 
-        if (booksRead <= 5) {
-            levelName = 'Leitor Iniciante';
-            icon = '🌱';
-            levelClass = 'level-iniciante';
-        } else if (booksRead <= 10) {
-            levelName = 'Leitor Regular';
-            icon = '📚';
-            levelClass = 'level-regular';
-        } else if (booksRead <= 20) {
-            levelName = 'Leitor Ativo';
-            icon = '⭐';
-            levelClass = 'level-ativo';
-        } else {
-            levelName = 'Leitor Extremo';
-            icon = '🏆';
-            levelClass = 'level-extremo';
+        
+        switch(nivelLeitor) {
+            case 'INICIANTE':
+                levelName = 'Leitor Iniciante';
+                icon = '🌱';
+                levelClass = 'level-iniciante';
+                break;
+            case 'REGULAR':
+                levelName = 'Leitor Regular';
+                icon = '📚';
+                levelClass = 'level-regular';
+                break;
+            case 'ATIVO':
+                levelName = 'Leitor Ativo';
+                icon = '⭐';
+                levelClass = 'level-ativo';
+                break;
+            case 'EXTREMO':
+                levelName = 'Leitor Extremo';
+                icon = '🏆';
+                levelClass = 'level-extremo';
+                break;
+            default:
+                levelName = 'Leitor Iniciante';
+                icon = '🌱';
+                levelClass = 'level-iniciante';
         }
 
-        // Seleciona os elementos do widget
+        
         const widget = $('#gamification-widget');
         const iconEl = widget.find('.gamification-icon');
         const titleEl = widget.find('.gamification-title');
         const subtitleEl = widget.find('.gamification-subtitle');
         
-        // Atualiza o conteúdo e a classe
+        
         iconEl.text(icon);
         titleEl.text(levelName);
-        subtitleEl.text(booksRead + ' livros lidos este semestre');
         
-        // Remove classes antigas e adiciona a nova para a cor da borda
+        
+        
         widget.removeClass('level-iniciante level-regular level-ativo level-extremo').addClass(levelClass);
     }
 
-    // --- INICIALIZAÇÃO DA PÁGINA ---
-
-    // 1. Atualiza o widget de gamificação com os dados do aluno
-    updateGamificationWidget(loggedInStudent.booksReadSemester);
-
-    // 2. Inicializa o DataTables
-    $('#booksTable').DataTable({
-        "language": {
-            "lengthMenu": "Mostrar _MENU_ registros",
-            "zeroRecords": "Nenhum livro encontrado",
-            "info": "Página _PAGE_ de _PAGES_",
-            "infoEmpty": "Nenhum registro",
-            "infoFiltered": "(filtrado de _MAX_ registros)",
-            "search": "Buscar:",
-            "paginate": { 
-                "next": "Próximo", 
-                "previous": "Anterior" 
-            }
-        },
-        "columnDefs": [ { 
-            "orderable": false, 
-            "targets": 4 
-        } ]
-    });
-
-    // 3. Adiciona evento de clique aos botões "Alugar"
-    $('#booksTable tbody').on('click', '.btn-alugar', function() {
-        if (!$(this).is(':disabled')) {
-            var bookTitle = $(this).closest('tr').find('.book-title').text();
-            var bookAuthor = $(this).closest('tr').find('.book-author').text();
+    
+    async function carregarDadosGamificacao() {
+        try {
             
-            // Redirecionar para a página de aluguel
-            window.location.href = 'alugar.html';
+            const usuarioStr = localStorage.getItem('usuario');
+            if (!usuarioStr) {
+                console.error('Usuário não encontrado no localStorage');
+                
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const usuario = JSON.parse(usuarioStr);
+            const usuarioId = usuario.id;
+
+            
+            const response = await fetch(`${API_URL}/estatisticas/${usuarioId}`);
+            const data = await response.json();
+
+            if (data.sucesso && data.estatisticas) {
+                const estatisticas = data.estatisticas;
+                
+                const livrosLidos = estatisticas.livros_devolvidos || 0;
+                const nivelLeitor = estatisticas.nivel_leitor || 'INICIANTE';
+                
+                
+                updateGamificationWidget(nivelLeitor, livrosLidos);
+            } else {
+                console.error('Erro ao carregar estatísticas:', data.mensagem);
+                
+                updateGamificationWidget('INICIANTE', 0);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar dados de gamificação:', error);
+            
+            updateGamificationWidget('INICIANTE', 0);
         }
-    });
+    }
+
+    
+    async function carregarLivros() {
+        try {
+            const response = await fetch(`${API_URL}/livros`);
+            const data = await response.json();
+
+            if (data.sucesso && data.livros) {
+                const tbody = $('#booksTable tbody');
+                tbody.empty(); 
+
+                data.livros.forEach(livro => {
+                    const statusClass = livro.disponivel ? 'status-available' : 'status-unavailable';
+                    const statusText = livro.disponivel ? 'Disponível' : 'Indisponível';
+
+                    const row = `
+                        <tr>
+                            <td><div class="book-title">${livro.titulo}</div></td>
+                            <td><div class="book-author">${livro.autor}</div></td>
+                            <td>${livro.categoria}</td>
+                            <td><span class="status ${statusClass}">${statusText}</span></td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+
+                
+                if ($.fn.DataTable.isDataTable('#booksTable')) {
+                    $('#booksTable').DataTable().destroy();
+                }
+
+                $('#booksTable').DataTable({
+                    "language": {
+                        "lengthMenu": "Mostrar _MENU_ registros",
+                        "zeroRecords": "Nenhum livro encontrado",
+                        "info": "Página _PAGE_ de _PAGES_",
+                        "infoEmpty": "Nenhum registro",
+                        "infoFiltered": "(filtrado de _MAX_ registros)",
+                        "search": "Buscar:",
+                        "paginate": { 
+                            "next": "Próximo", 
+                            "previous": "Anterior" 
+                        }
+                    }
+                });
+            } else {
+                console.error('Erro ao carregar livros:', data.mensagem);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar livros:', error);
+        }
+    }
+
+    
+
+    
+    carregarDadosGamificacao();
+
+    
+    carregarLivros();
 });

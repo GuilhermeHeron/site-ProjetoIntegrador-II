@@ -157,9 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.removeItem('acao_totem');
                 localStorage.removeItem('livro_selecionado');
                 
-                // Redireciona para perfil.html após 1 segundo
+                // Redireciona para livros.html após 1 segundo
                 setTimeout(() => {
-                    window.location.href = 'perfil.html';
+                    window.location.href = 'livros.html';
                 }, 1000);
             } else {
                 // Erro no login

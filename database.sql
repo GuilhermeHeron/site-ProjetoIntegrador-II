@@ -7,23 +7,6 @@ CREATE DATABASE IF NOT EXISTS biblioteca;
 USE biblioteca;
 
 -- =====================================================
--- TABELA: CARGOS/USUARIOS
--- =====================================================
-CREATE TABLE IF NOT EXISTS cargos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(50) NOT NULL UNIQUE,
-    descricao TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Inserção de cargos padrão
-INSERT INTO cargos (nome, descricao) VALUES
-('ALUNO', 'Estudante que pode alugar livros'),
-('ADMIN', 'Administrador do sistema com acesso completo'),
-('FUNCIONARIO', 'Funcionário da biblioteca que gerencia empréstimos');
-
--- =====================================================
 -- TABELA: USUARIOS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -31,17 +14,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nome_completo VARCHAR(200) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     ra VARCHAR(50) NOT NULL UNIQUE COMMENT 'Registro Acadêmico ou identificador único',
-    cargo_id INT NOT NULL,
     status ENUM('ATIVO', 'INATIVO', 'SUSPENSO') DEFAULT 'ATIVO',
     total_livros_emprestados INT DEFAULT 0 COMMENT 'Contador de livros emprestados (total de empréstimos realizados)',
     nivel_leitor ENUM('INICIANTE', 'REGULAR', 'ATIVO', 'EXTREMO') DEFAULT 'INICIANTE',
     total_conquistas INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (cargo_id) REFERENCES cargos(id) ON DELETE RESTRICT,
     INDEX idx_ra (ra),
-    INDEX idx_email (email),
-    INDEX idx_cargo (cargo_id)
+    INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
@@ -55,13 +35,7 @@ CREATE TABLE IF NOT EXISTS categorias (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Inserção de categorias padrão
-INSERT INTO categorias (nome, descricao) VALUES
-('Ficção', 'Livros de ficção literária'),
-('Não Ficção', 'Livros baseados em fatos reais'),
-('Ciência', 'Livros científicos e técnicos'),
-('História', 'Livros de história e eventos históricos'),
-('Biografia', 'Livros biográficos');
+-- (Categorias serão cadastradas via aplicação; nenhum registro padrão é inserido aqui)
 
 -- =====================================================
 -- TABELA: LIVROS
@@ -167,14 +141,7 @@ CREATE TABLE IF NOT EXISTS usuario_conquistas (
     INDEX idx_conquista (conquista_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- =====================================================
--- CONQUISTAS PADRÃO (Apenas níveis de leitor baseados em livros emprestados)
--- =====================================================
-INSERT INTO conquistas (nome, descricao, icone, criterio) VALUES
-('Leitor Iniciante', 'Emprestou até 5 livros', '🌱', '5 livros emprestados'),
-('Leitor Regular', 'Emprestou até 10 livros', '📚', '10 livros emprestados'),
-('Leitor Ativo', 'Emprestou até 20 livros', '⭐', '20 livros emprestados'),
-('Leitor Extremo', 'Emprestou mais de 20 livros', '🏆', 'Mais de 20 livros emprestados');
+-- (Conquistas serão cadastradas via aplicação, se necessário; nenhum registro padrão é inserido aqui)
 
 -- =====================================================
 -- TRIGGERS PARA ATUALIZAÇÃO AUTOMÁTICA
@@ -247,34 +214,72 @@ SELECT
     u.nome_completo,
     u.ra,
     u.email,
-    cg.nome AS cargo,
     u.total_livros_emprestados,
     u.nivel_leitor,
     u.total_conquistas,
     COUNT(DISTINCT e.id) AS livros_emprestados_atualmente,
     COUNT(DISTINCT h.id) AS total_devolvidos
 FROM usuarios u
-INNER JOIN cargos cg ON u.cargo_id = cg.id
 LEFT JOIN emprestimos e ON u.id = e.usuario_id AND e.status = 'ATIVO'
 LEFT JOIN historico_emprestimos h ON u.id = h.usuario_id
-GROUP BY u.id, u.nome_completo, u.ra, u.email, cg.nome, u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas;
+GROUP BY 
+    u.id,
+    u.nome_completo,
+    u.ra,
+    u.email,
+    u.total_livros_emprestados,
+    u.nivel_leitor,
+    u.total_conquistas;
 
 -- View: Relatório de classificação de leitores (para painel admin)
+-- OBS: Considera apenas empréstimos realizados nos últimos 6 meses (a partir da data atual)
 CREATE OR REPLACE VIEW vw_classificacao_leitores AS
 SELECT 
     u.id,
     u.nome_completo AS nome_leitor,
-    u.total_livros_emprestados AS livros_emprestados_total,
+    COALESCE(stats.livros_emprestados_6_meses, 0) AS livros_emprestados_total,
     u.nivel_leitor AS classificacao,
-    COUNT(DISTINCT h.id) AS total_devolvidos,
-    COUNT(DISTINCT CASE WHEN h.status_final = 'ATRASADO' THEN h.id END) AS emprestimos_atrasados
+    COALESCE(stats.total_devolvidos_6_meses, 0) AS total_devolvidos,
+    COALESCE(stats.emprestimos_atrasados_6_meses, 0) AS emprestimos_atrasados
 FROM usuarios u
-LEFT JOIN historico_emprestimos h ON u.id = h.usuario_id
-WHERE u.cargo_id = (SELECT id FROM cargos WHERE nome = 'ALUNO')
-GROUP BY u.id, u.nome_completo, u.total_livros_emprestados, u.nivel_leitor
-ORDER BY u.total_livros_emprestados DESC;
+LEFT JOIN (
+    SELECT
+        base.usuario_id,
+        COUNT(*) AS livros_emprestados_6_meses,
+        COUNT(CASE WHEN base.origem = 'HISTORICO_ATRASADO' THEN 1 END) AS emprestimos_atrasados_6_meses,
+        COUNT(CASE WHEN base.origem IN ('HISTORICO_DEVOLVIDO', 'HISTORICO_ATRASADO', 'HISTORICO_PERDIDO') THEN 1 END) AS total_devolvidos_6_meses
+    FROM (
+        -- Empréstimos ainda ativos (ou não encerrados) nos últimos 6 meses
+        SELECT 
+            e.usuario_id,
+            e.livro_id,
+            e.data_emprestimo,
+            'EMPRESTIMO_ATIVO' AS origem
+        FROM emprestimos e
+        WHERE e.data_emprestimo >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
 
--- View: Livros disponíveis para aluguel
+        UNION
+
+        -- Empréstimos que já foram para o histórico nos últimos 6 meses
+        SELECT 
+            h.usuario_id,
+            h.livro_id,
+            h.data_emprestimo,
+            CASE 
+                WHEN h.status_final = 'ATRASADO' THEN 'HISTORICO_ATRASADO'
+                WHEN h.status_final = 'PERDIDO' THEN 'HISTORICO_PERDIDO'
+                ELSE 'HISTORICO_DEVOLVIDO'
+            END AS origem
+        FROM historico_emprestimos h
+        WHERE h.data_emprestimo >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    ) AS base
+    -- Evitar contagem dupla do mesmo empréstimo caso exista em ambas as tabelas:
+    -- usamos DISTINCT pelo trio (usuario_id, livro_id, data_emprestimo)
+    GROUP BY base.usuario_id
+) AS stats ON u.id = stats.usuario_id
+ORDER BY livros_emprestados_total DESC;
+
+-- View: Livros disponíveis para retirada
 CREATE OR REPLACE VIEW vw_livros_disponiveis AS
 SELECT 
     l.id,
@@ -296,26 +301,7 @@ GROUP BY l.id, l.titulo, l.autor, c.nome, l.sinopse, l.numero_paginas, l.codigo_
 -- DADOS DE EXEMPLO (OPCIONAL - PARA TESTES)
 -- =====================================================
 
--- Exemplo de livros (múltiplos exemplares do mesmo livro)
-INSERT INTO livros (titulo, autor, categoria_id, sinopse, numero_paginas, codigo_exemplar) VALUES
-('A Grande Aventura', 'Thomas Vinterberg', (SELECT id FROM categorias WHERE nome = 'Ficção'), 
- 'Uma emocionante aventura que leva o leitor a mundos desconhecidos e experiências únicas.', 320, 'FIC-001-01'),
-('A Grande Aventura', 'Thomas Vinterberg', (SELECT id FROM categorias WHERE nome = 'Ficção'), 
- 'Uma emocionante aventura que leva o leitor a mundos desconhecidos e experiências únicas.', 320, 'FIC-001-02'),
-('História do Tempo', 'Stacy Achar.ce', (SELECT id FROM categorias WHERE nome = 'Ciência'), 
- 'Uma obra científica sobre o tempo e o universo.', 400, 'CIE-001-01'),
-('Na Natureza Selvagem', 'Jon Krakauer', (SELECT id FROM categorias WHERE nome = 'Não Ficção'), 
- 'A história real de Christopher McCandless e sua jornada pela natureza.', 280, 'NFC-001-01'),
-('Na Natureza Selvagem', 'Jon Krakauer', (SELECT id FROM categorias WHERE nome = 'Não Ficção'), 
- 'A história real de Christopher McCandless e sua jornada pela natureza.', 280, 'NFC-001-02'),
-('O Mundo Perdido', 'Arthur Conan Doyle', (SELECT id FROM categorias WHERE nome = 'Ficção'), 
- 'Uma expedição a um mundo pré-histórico perdido no tempo.', 350, 'FIC-002-01'),
-('O Mistério', 'Detrity Eklent', (SELECT id FROM categorias WHERE nome = 'Ficção'), 
- 'Um mistério envolvente que prende o leitor do início ao fim.', 290, 'FIC-003-01'),
-('Ciência Hoje', 'Sclure Botrlo', (SELECT id FROM categorias WHERE nome = 'Ciência'), 
- 'Uma análise das descobertas científicas mais recentes.', 450, 'CIE-002-01'),
-('Revoluções na História', 'Maria Alvez', (SELECT id FROM categorias WHERE nome = 'História'), 
- 'Um estudo sobre as principais revoluções que marcaram a história.', 380, 'HIS-001-01');
+-- (Livros de exemplo não são mais inseridos automaticamente; cadastre-os pela aplicação conforme necessário)
 
 -- =====================================================
 -- ÍNDICES ADICIONAIS PARA PERFORMANCE

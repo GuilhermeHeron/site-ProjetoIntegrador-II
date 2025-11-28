@@ -611,7 +611,7 @@ body.with-navbar {
     border: 1px solid rgba(252, 165, 165, 0.3);
 }
 
-.btn-alugar {
+.btn-retirar {
     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     color: white;
     border: none;
@@ -623,13 +623,13 @@ body.with-navbar {
     box-shadow: 0 2px 12px rgba(59, 130, 246, 0.4);
 }
 
-.btn-alugar:hover {
+.btn-retirar:hover {
     background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
 }
 
-.btn-alugar:disabled {
+.btn-retirar:disabled {
     background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
     color: #6b7280;
     cursor: not-allowed;
@@ -762,7 +762,7 @@ body.with-navbar {
     transform: translateY(-1px);
 }
 
-/* --- ESTILOS PARA PÁGINA DE ALUGUEL --- */
+/* --- ESTILOS PARA PÁGINA DE RETIRADA --- */
 .books-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1112,7 +1112,7 @@ select option {
     }
 }
 
-/* --- ESTILOS PARA PÁGINAS SIMPLIFICADAS (ALUGAR/DEVOLVER) --- */
+/* --- ESTILOS PARA PÁGINAS SIMPLIFICADAS (RETIRAR/DEVOLVER) --- */
 .book-details-container {
     max-width: 1200px;
     margin: 0 auto;

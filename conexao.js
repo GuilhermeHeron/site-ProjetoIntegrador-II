@@ -1,14 +1,19 @@
 const mysql = require('mysql2/promise');
 
+// ============================================
+// [SIS-DB] Camada de acesso ao banco de dados MySQL
+// Responsável por abrir conexões, executar queries
+// e oferecer helpers reutilizáveis para todos os backends
+// ============================================
+
 // Configuração da conexão com o banco de dados
+// ATENÇÃO: ajuste host/port/user/password conforme seu MySQL local
 const dbConfig = {
-    host: 'localhost',
+    host: '127.0.0.1',   // usar IP evita alguns problemas de resolução de 'localhost'
+    port: 3306,          // se seu MySQL usar outra porta (ex.: 3307), troque aqui
     user: 'root',
-    password: '', 
+    password: '',        // se tiver senha no root, coloque aqui
     database: 'biblioteca',
-
-
-
 
     waitForConnections: true,
     connectionLimit: 10,
