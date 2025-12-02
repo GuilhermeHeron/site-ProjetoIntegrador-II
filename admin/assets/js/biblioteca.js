@@ -554,19 +554,32 @@ async function carregarHistorico() {
 
         if (data.sucesso && data.historico) {
             data.historico.forEach(h => {
+<<<<<<< HEAD
                 const isRetirado = h.tipo_evento === 'RETIRADO';
                 const eventoClass = isRetirado ? 'status-loaned' : 'status-devolvido';
                 const eventoBadge = `<span class="badge ${eventoClass}">${h.tipo_evento}</span>`;
 
                 const dataEvento = new Date(h.data).toLocaleDateString('pt-BR');
+=======
+                const statusClass = h.status === 'ATRASADO' ? 'status-atrasado' : 
+                                   h.status === 'PERDIDO' ? 'status-perdido' : 'status-devolvido';
+                const statusBadge = `<span class="badge ${statusClass}">${h.status}</span>`;
+
+                const dataEmprestimo = new Date(h.data_emprestimo).toLocaleDateString('pt-BR');
+>>>>>>> b86a84f19e164fe3ab9fc533c207c7ce715fa1e6
 
                 const row = `
                     <tr>
                         <td>${h.id}</td>
                         <td>${h.usuario}</td>
                         <td>${h.livro}</td>
+<<<<<<< HEAD
                         <td>${dataEvento}</td>
                         <td>${eventoBadge}</td>
+=======
+                        <td>${dataEmprestimo}</td>
+                        <td>${statusBadge}</td>
+>>>>>>> b86a84f19e164fe3ab9fc533c207c7ce715fa1e6
                     </tr>
                 `;
                 tbody.append(row);

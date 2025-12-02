@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS categorias (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+<<<<<<< HEAD
 -- Inserir categorias padrão
 INSERT INTO categorias (nome, descricao) VALUES
 ('Ficção', 'Romances, contos e narrativas ficcionais'),
@@ -58,6 +59,9 @@ INSERT INTO categorias (nome, descricao) VALUES
 ('Religião e Espiritualidade', 'Livros sobre religiões e espiritualidade'),
 ('Negócios e Economia', 'Livros sobre negócios, economia e empreendedorismo')
 ON DUPLICATE KEY UPDATE nome = nome;
+=======
+-- (Categorias serão cadastradas via aplicação; nenhum registro padrão é inserido aqui)
+>>>>>>> b86a84f19e164fe3ab9fc533c207c7ce715fa1e6
 
 -- =====================================================
 -- TABELA: LIVROS
@@ -204,6 +208,123 @@ END$$
 
 DELIMITER ;
 
+<<<<<<< HEAD
+=======
+-- =====================================================
+-- VIEWS ÚTEIS PARA CONSULTAS
+-- =====================================================
+
+-- View: Empréstimos ativos com informações completas
+CREATE OR REPLACE VIEW vw_emprestimos_ativos AS
+SELECT 
+    e.id,
+    u.nome_completo AS usuario_nome,
+    u.ra AS usuario_ra,
+    l.titulo AS livro_titulo,
+    l.autor AS livro_autor,
+    c.nome AS livro_categoria,
+    e.data_emprestimo,
+    e.data_devolucao_prevista,
+    e.data_renovacao,
+    e.numero_renovacoes,
+    e.status,
+    DATEDIFF(CURDATE(), e.data_devolucao_prevista) AS dias_atraso
+FROM emprestimos e
+INNER JOIN usuarios u ON e.usuario_id = u.id
+INNER JOIN livros l ON e.livro_id = l.id
+INNER JOIN categorias c ON l.categoria_id = c.id
+WHERE e.status = 'ATIVO';
+
+-- View: Estatísticas de usuários
+CREATE OR REPLACE VIEW vw_estatisticas_usuarios AS
+SELECT 
+    u.id,
+    u.nome_completo,
+    u.ra,
+    u.email,
+    u.total_livros_emprestados,
+    u.nivel_leitor,
+    u.total_conquistas,
+    COUNT(DISTINCT e.id) AS livros_emprestados_atualmente,
+    COUNT(DISTINCT h.id) AS total_devolvidos
+FROM usuarios u
+LEFT JOIN emprestimos e ON u.id = e.usuario_id AND e.status = 'ATIVO'
+LEFT JOIN historico_emprestimos h ON u.id = h.usuario_id
+GROUP BY 
+    u.id,
+    u.nome_completo,
+    u.ra,
+    u.email,
+    u.total_livros_emprestados,
+    u.nivel_leitor,
+    u.total_conquistas;
+
+-- View: Relatório de classificação de leitores (para painel admin)
+-- OBS: Considera apenas empréstimos realizados nos últimos 6 meses (a partir da data atual)
+CREATE OR REPLACE VIEW vw_classificacao_leitores AS
+SELECT 
+    u.id,
+    u.nome_completo AS nome_leitor,
+    COALESCE(stats.livros_emprestados_6_meses, 0) AS livros_emprestados_total,
+    u.nivel_leitor AS classificacao,
+    COALESCE(stats.total_devolvidos_6_meses, 0) AS total_devolvidos,
+    COALESCE(stats.emprestimos_atrasados_6_meses, 0) AS emprestimos_atrasados
+FROM usuarios u
+LEFT JOIN (
+    SELECT
+        base.usuario_id,
+        COUNT(*) AS livros_emprestados_6_meses,
+        COUNT(CASE WHEN base.origem = 'HISTORICO_ATRASADO' THEN 1 END) AS emprestimos_atrasados_6_meses,
+        COUNT(CASE WHEN base.origem IN ('HISTORICO_DEVOLVIDO', 'HISTORICO_ATRASADO', 'HISTORICO_PERDIDO') THEN 1 END) AS total_devolvidos_6_meses
+    FROM (
+        -- Empréstimos ainda ativos (ou não encerrados) nos últimos 6 meses
+        SELECT 
+            e.usuario_id,
+            e.livro_id,
+            e.data_emprestimo,
+            'EMPRESTIMO_ATIVO' AS origem
+        FROM emprestimos e
+        WHERE e.data_emprestimo >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+
+        UNION
+
+        -- Empréstimos que já foram para o histórico nos últimos 6 meses
+        SELECT 
+            h.usuario_id,
+            h.livro_id,
+            h.data_emprestimo,
+            CASE 
+                WHEN h.status_final = 'ATRASADO' THEN 'HISTORICO_ATRASADO'
+                WHEN h.status_final = 'PERDIDO' THEN 'HISTORICO_PERDIDO'
+                ELSE 'HISTORICO_DEVOLVIDO'
+            END AS origem
+        FROM historico_emprestimos h
+        WHERE h.data_emprestimo >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    ) AS base
+    -- Evitar contagem dupla do mesmo empréstimo caso exista em ambas as tabelas:
+    -- usamos DISTINCT pelo trio (usuario_id, livro_id, data_emprestimo)
+    GROUP BY base.usuario_id
+) AS stats ON u.id = stats.usuario_id
+ORDER BY livros_emprestados_total DESC;
+
+-- View: Livros disponíveis para retirada
+CREATE OR REPLACE VIEW vw_livros_disponiveis AS
+SELECT 
+    l.id,
+    l.titulo,
+    l.autor,
+    c.nome AS categoria,
+    l.sinopse,
+    l.numero_paginas,
+    l.codigo_exemplar,
+    l.status,
+    COUNT(DISTINCT CASE WHEN e.status = 'ATIVO' THEN e.id END) AS exemplares_emprestados
+FROM livros l
+INNER JOIN categorias c ON l.categoria_id = c.id
+LEFT JOIN emprestimos e ON l.id = e.livro_id
+WHERE l.status = 'DISPONIVEL'
+GROUP BY l.id, l.titulo, l.autor, c.nome, l.sinopse, l.numero_paginas, l.codigo_exemplar, l.status;
+>>>>>>> b86a84f19e164fe3ab9fc533c207c7ce715fa1e6
 
 -- =====================================================
 -- DADOS DE EXEMPLO (OPCIONAL - PARA TESTES)

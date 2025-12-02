@@ -61,6 +61,7 @@ router.get('/ativos', async (req, res) => {
 /**
  * GET /emprestimos/historico
  * Lista todo o histórico de empréstimos e devoluções
+<<<<<<< HEAD
  * Mostra duas linhas por empréstimo: uma para retirado e outra para devolvido
  */
 router.get('/historico', async (req, res) => {
@@ -82,6 +83,12 @@ router.get('/historico', async (req, res) => {
 
         // Buscar empréstimos devolvidos (histórico)
         const historicoDevolvidos = await executarQuery(`
+=======
+ */
+router.get('/historico', async (req, res) => {
+    try {
+        const historico = await executarQuery(`
+>>>>>>> b86a84f19e164fe3ab9fc533c207c7ce715fa1e6
             SELECT 
                 h.id,
                 u.nome_completo AS usuario,
@@ -92,6 +99,7 @@ router.get('/historico', async (req, res) => {
             FROM historico_emprestimos h
             INNER JOIN usuarios u ON h.usuario_id = u.id
             INNER JOIN livros l ON h.livro_id = l.id
+<<<<<<< HEAD
         `);
 
         // Combinar e criar duas linhas por empréstimo devolvido
@@ -149,6 +157,15 @@ router.get('/historico', async (req, res) => {
             sucesso: true,
             historico: historicoCompleto || [],
             total: historicoCompleto ? historicoCompleto.length : 0
+=======
+            ORDER BY h.data_devolucao_real DESC, h.data_emprestimo DESC
+        `);
+
+        res.status(200).json({
+            sucesso: true,
+            historico: historico || [],
+            total: historico ? historico.length : 0
+>>>>>>> b86a84f19e164fe3ab9fc533c207c7ce715fa1e6
         });
 
     } catch (error) {

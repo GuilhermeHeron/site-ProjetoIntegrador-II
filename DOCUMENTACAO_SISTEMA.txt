@@ -1,0 +1,183 @@
+===============================================
+DOCUMENTAÇÃO RESUMIDA DO SISTEMA DE BIBLIOTECA
+===============================================
+
+Este arquivo descreve, em alto nível, os principais módulos
+do sistema e como eles se relacionam. Os códigos comentados
+com identificadores [SIS-...] são as "partes chaves" do sistema.
+
+
+1) Camada de banco de dados / conexão
+-------------------------------------
+
+[SIS-DB] - arquivo: conexao.js
+--------------------------------
+Função:
+- Centraliza a configuração do MySQL (host, usuário, senha, banco).
+- Cria um pool de conexões para melhor performance.
+- Expõe helpers:
+  - testarConexao(): verifica se o banco está acessível.
+  - executarQuery(sql, params): executa queries com parâmetros.
+  - obterConexao(): retorna uma conexão direta (para transações).
+
+Quem usa:
+- Todos os backends: admin, aluno e totem.
+
+
+2) Backend da área administrativa
+---------------------------------
+
+[SIS-ADMIN-API] - arquivo: admin/backend/server.js
+--------------------------------------------------
+Função:
+- É o ponto de entrada do backend admin (porta 3002).
+- Configura middlewares (CORS, JSON).
+- Enrola as rotas especializadas:
+  - ./cadastro-livros       → /livros/cadastrar, etc.
+  - ./gerenciar-livros      → /livros/listar, editar, excluir.
+  - ./gerenciar-usuarios    → listar/editar usuários e relatórios.
+  - ./gerenciar-emprestimos → relatórios de empréstimos/histórico.
+
+Uso típico:
+- Em conjunto com a interface `admin/biblioteca.html` + 
+  `admin/assets/js/biblioteca.js`, que consomem esses endpoints
+para montar as tabelas de gerenciamento e relatórios.
+
+
+3) Backend da aplicação do aluno
+--------------------------------
+
+[SIS-ALUNO-API] - arquivo: aluno/backend/server.js
+--------------------------------------------------
+Função:
+- É o ponto de entrada do backend da área do aluno (porta 3001).
+- Fornece todas as funcionalidades ligadas ao aluno:
+  - POST /cadastro          → cria novo aluno.
+  - POST /login             → autentica via RA.
+  - GET  /usuario/:id       → dados básicos do aluno.
+  - GET  /emprestimos/:id   → empréstimos ativos do aluno.
+  - GET  /historico/:id     → histórico de livros devolvidos.
+  - POST /renovar           → renova um empréstimo ativo.
+  - GET  /estatisticas/:id  → estatísticas (nível, contagens).
+  - GET  /livros            → lista de livros com status p/ front.
+
+Quem consome:
+- Páginas em `aluno/` (ex.: `index.html`, `livros.html`, `perfil.html`)
+  via arquivos JS:
+  - aluno/assets/js/login.js
+  - aluno/assets/js/script.js
+  - aluno/assets/js/perfil.js
+  - aluno/assets/js/renovar.js
+
+
+4) Backend do Totem de Autoatendimento
+--------------------------------------
+
+[SIS-TOTEM-API] - arquivo: toten/backend/server.js
+--------------------------------------------------
+Função:
+- É o backend exclusivo do totem físico (porta 3003).
+- Endpoints principais:
+  - GET  /livros                 → livros disponíveis para retirada.
+  - GET  /livros/:id            → detalhes de um livro.
+  - POST /alugar                → registra a RETIRADA de um livro
+                                  (cria um empréstimo ATIVO).
+  - POST /devolver              → registra a devolução e move
+                                  para o histórico.
+  - GET  /emprestimos/usuario/:id → lista empréstimos ativos
+                                    de um usuário no contexto do totem.
+
+Quem consome:
+- Páginas em `toten/`:
+  - `livros.html`  → lista para o usuário escolher o livro.
+  - `index.html`   → login simplificado do totem.
+  - `alugar.html`  → tela de confirmação da retirada.
+  - `devolver.html`→ fluxo de devolução.
+- Arquivos JS:
+  - toten/assets/js/script.js   → carrega livros no acervo do totem.
+  - toten/assets/js/login-totem.js → login e redirecionamento.
+  - toten/assets/js/alugar.js   → fluxo de retirada (chama /alugar).
+  - toten/assets/js/devolver.js → fluxo de devolução (chama /devolver).
+
+
+5) Estrutura do banco de dados
+------------------------------
+
+Arquivo: database.sql
+----------------------
+Principais componentes:
+- Tabelas:
+  - usuarios, livros, categorias, emprestimos,
+    historico_emprestimos, conquistas, usuario_conquistas, etc.
+- Triggers:
+  - Atualizam automaticamente status do livro e contador/nivel do leitor
+    quando um empréstimo é criado ou devolvido.
+- Views (vw_...):
+  - vw_emprestimos_ativos          → visão unificada de empréstimos ativos.
+  - vw_estatisticas_usuarios       → estatísticas agregadas por usuário.
+  - vw_classificacao_leitores      → relatório de classificação (6 meses).
+  - vw_livros_disponiveis          → livros disponíveis para retirada.
+
+Como se conecta com o resto:
+- Todos os backends (admin, aluno, totem) usam as mesmas tabelas/views
+  através do helper `executarQuery` de `conexao.js`.
+
+
+6) Interfaces Web (front-end)
+-----------------------------
+
+Diretório: admin/
+-----------------
+- `biblioteca.html` + `assets/js/biblioteca.js`
+  - Consomem a API do admin para:
+    - Cadastrar e gerenciar livros.
+    - Gerenciar usuários.
+    - Exibir relatórios de leitores e empréstimos.
+
+Diretório: aluno/
+-----------------
+- `index.html`, `livros.html`, `perfil.html`, `renovar.html`
+  + scripts em `aluno/assets/js/`
+  - Oferecem ao aluno:
+    - Cadastro e login.
+    - Visualização do acervo e empréstimos ativos.
+    - Renovação de livros.
+    - Perfil, conquistas e estatísticas.
+
+Diretório: toten/
+-----------------
+- `index.html`, `livros.html`, `alugar.html`, `devolver.html`
+  + scripts em `toten/assets/js/`
+  - Implementam o fluxo de autoatendimento:
+    - Escolher livro no totem.
+    - Autenticar-se.
+    - Registrar retirada e devolução diretamente na base.
+
+
+7) Como entender o fluxo completo
+---------------------------------
+
+1. O aluno se cadastra / faz login:
+   - Front `aluno/` → backend [SIS-ALUNO-API] → tabela `usuarios`.
+
+2. O aluno retira um livro no totem:
+   - `toten/livros.html` e `alugar.html` →
+     [SIS-TOTEM-API] (/livros, /alugar) →
+     tabelas `livros` e `emprestimos` + triggers.
+
+3. O aluno devolve o livro:
+   - `toten/devolver.html` →
+     [SIS-TOTEM-API] (/devolver) →
+     atualiza `emprestimos` e insere em `historico_emprestimos`.
+
+4. O admin acompanha tudo:
+   - `admin/biblioteca.html` →
+     [SIS-ADMIN-API] (rotas de livros, usuários, relatórios) →
+     views `vw_...` para dashboards e relatórios de classificação.
+
+
+Com isso, os comentários [SIS-DB], [SIS-ADMIN-API],
+[SIS-ALUNO-API] e [SIS-TOTEM-API] funcionam como
+marcadores rápidos das partes centrais do sistema.
+
+
