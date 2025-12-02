@@ -4,6 +4,8 @@ const API_URL = 'http://localhost:3002';
 // Variáveis globais
 let dataTableGerenciamento = null;
 let dataTableRelatorios = null;
+let dataTableEmprestados = null;
+let dataTableHistorico = null;
 let categoriasDisponiveis = [];
 
 $(document).ready(function () {
@@ -16,6 +18,10 @@ $(document).ready(function () {
         carregarLivros();
     } else if (activeSection === 'relatorios') {
         carregarRelatorios();
+    } else if (activeSection === 'emprestados') {
+        carregarEmprestados();
+    } else if (activeSection === 'historico') {
+        carregarHistorico();
     }
 
     // --- LÓGICA DE NAVEGAÇÃO ENTRE ABAS ---
@@ -43,6 +49,10 @@ $(document).ready(function () {
                 carregarLivros();
             } else if (target === 'relatorios' && targetSection.hasClass('active') && targetSection.is(':visible')) {
                 carregarRelatorios();
+            } else if (target === 'emprestados' && targetSection.hasClass('active') && targetSection.is(':visible')) {
+                carregarEmprestados();
+            } else if (target === 'historico' && targetSection.hasClass('active') && targetSection.is(':visible')) {
+                carregarHistorico();
             }
         });
     });
@@ -430,11 +440,25 @@ async function carregarRelatorios() {
                                 previous: "Anterior"
                             }
                         },
-                        order: [[2, "desc"]], // Ordenar por livros lidos (descendente)
+                        order: [[2, "desc"]], // Ordenar por total de livros emprestados (descendente)
                         columnDefs: [{
                             orderable: false,
                             targets: 3
                         }]
+                    });
+
+                    // Filtro de classificação (rank)
+                    const filtroRank = $('#filtroRank');
+                    filtroRank.off('change').on('change', function () {
+                        const valor = $(this).val();
+
+                        if (!valor) {
+                            // Todos os ranks
+                            dataTableRelatorios.column(3).search('').draw();
+                        } else {
+                            // Filtrar pelo texto exato da classificação (INICIANTE, REGULAR, ATIVO, EXTREMO)
+                            dataTableRelatorios.column(3).search('^' + valor + '$', true, false).draw();
+                        }
                     });
                 }
             });
@@ -449,6 +473,127 @@ function inicializarTabelas() {
     // NÃO inicializar DataTables vazias - elas serão criadas quando os dados forem carregados
     // Isso evita conflitos quando os dados são carregados dinamicamente
     console.log('Tabelas serão inicializadas quando os dados forem carregados');
+}
+
+async function carregarEmprestados() {
+    try {
+        // Destruir DataTable se já existir
+        if (dataTableEmprestados) {
+            try {
+                dataTableEmprestados.destroy();
+            } catch (e) {
+                console.log('DataTable de emprestados já estava destruído ou não existia');
+            }
+            dataTableEmprestados = null;
+        }
+
+        const tbody = $('#emprestadosTable tbody');
+        tbody.empty();
+
+        const response = await fetch(`${API_URL}/emprestimos/ativos`);
+        const data = await response.json();
+
+        if (data.sucesso && data.emprestimos) {
+            data.emprestimos.forEach(emp => {
+                const dataEmprestimo = new Date(emp.data_emprestimo).toLocaleDateString('pt-BR');
+                const dataDevolucao = new Date(emp.data_devolucao_prevista).toLocaleDateString('pt-BR');
+
+                const row = `
+                    <tr>
+                        <td>${emp.id}</td>
+                        <td>${emp.nome_usuario}</td>
+                        <td>${emp.livro_titulo}</td>
+                        <td>${dataEmprestimo}</td>
+                        <td>${dataDevolucao}</td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+
+            requestAnimationFrame(() => {
+                const section = $('#emprestados');
+                if (section.hasClass('active') && section.is(':visible')) {
+                    dataTableEmprestados = $('#emprestadosTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Página _PAGE_ de _PAGES_",
+                            paginate: {
+                                next: "Próximo",
+                                previous: "Anterior"
+                            }
+                        },
+                        order: [[3, "desc"]] // Ordenar por data de empréstimo (descendente)
+                    });
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar empréstidos:', error);
+        mostrarMensagem('emprestados', 'Erro ao carregar empréstimos. Verifique se o backend está rodando!', 'erro');
+    }
+}
+
+async function carregarHistorico() {
+    try {
+        // Destruir DataTable se já existir
+        if (dataTableHistorico) {
+            try {
+                dataTableHistorico.destroy();
+            } catch (e) {
+                console.log('DataTable de histórico já estava destruído ou não existia');
+            }
+            dataTableHistorico = null;
+        }
+
+        const tbody = $('#historicoTable tbody');
+        tbody.empty();
+
+        const response = await fetch(`${API_URL}/emprestimos/historico`);
+        const data = await response.json();
+
+        if (data.sucesso && data.historico) {
+            data.historico.forEach(h => {
+                const isRetirado = h.tipo_evento === 'RETIRADO';
+                const eventoClass = isRetirado ? 'status-loaned' : 'status-devolvido';
+                const eventoBadge = `<span class="badge ${eventoClass}">${h.tipo_evento}</span>`;
+
+                const dataEvento = new Date(h.data).toLocaleDateString('pt-BR');
+
+                const row = `
+                    <tr>
+                        <td>${h.id}</td>
+                        <td>${h.usuario}</td>
+                        <td>${h.livro}</td>
+                        <td>${dataEvento}</td>
+                        <td>${eventoBadge}</td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+
+            requestAnimationFrame(() => {
+                const section = $('#historico');
+                if (section.hasClass('active') && section.is(':visible')) {
+                    dataTableHistorico = $('#historicoTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Página _PAGE_ de _PAGES_",
+                            paginate: {
+                                next: "Próximo",
+                                previous: "Anterior"
+                            }
+                        },
+                        order: [[3, "desc"]] // Ordenar por data de empréstimo (descendente)
+                    });
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+        mostrarMensagem('historico', 'Erro ao carregar histórico. Verifique se o backend está rodando!', 'erro');
+    }
 }
 
 function mostrarMensagem(secao, mensagem, tipo) {

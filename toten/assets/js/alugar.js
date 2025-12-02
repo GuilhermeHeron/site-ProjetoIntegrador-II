@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Preenche os dados na página (após buscar dados completos)
     preencherDadosLivro();
-    preencherDadosAluguel();
+    preencherDadosRetirada();
     
     console.log('Dados do livro carregados e exibidos:', livroData);
 });
@@ -141,8 +141,8 @@ function preencherDadosLivro() {
     }
 }
 
-// Função para preencher os dados do aluguel
-function preencherDadosAluguel() {
+// Função para preencher os dados da retirada
+function preencherDadosRetirada() {
     if (!usuarioData) return;
 
     // Calcula datas
@@ -155,11 +155,11 @@ function preencherDadosAluguel() {
         return data.toLocaleDateString('pt-BR');
     };
 
-    // Atualiza informações do aluguel
+    // Atualiza informações da retirada
     const rentalDetails = document.querySelector('.rental-details');
     if (rentalDetails) {
         rentalDetails.innerHTML = `
-            <p><strong>Data do Aluguel:</strong> ${formatarData(hoje)}</p>
+            <p><strong>Data da Retirada:</strong> ${formatarData(hoje)}</p>
             <p><strong>Data de Devolução:</strong> ${formatarData(dataDevolucao)}</p>
             <p><strong>Período:</strong> 7 dias</p>
             <p><strong>Aluno:</strong> ${usuarioData.nome_completo} (RA: ${usuarioData.ra})</p>
@@ -167,23 +167,23 @@ function preencherDadosAluguel() {
     }
 }
 
-// Função para cancelar aluguel
-function cancelarAluguel() {
+// Função para cancelar retirada
+function cancelarRetirada() {
     mostrarModalConfirmacao(
-        'Cancelar Aluguel',
-        'Deseja cancelar o aluguel deste livro?',
+        'Cancelar Retirada',
+        'Deseja cancelar a retirada deste livro?',
         () => {
             // Remove o livro selecionado do localStorage
             localStorage.removeItem('livro_selecionado');
-            mostrarModal('Sucesso', 'Aluguel cancelado!', 'success', () => {
+            mostrarModal('Sucesso', 'Retirada cancelada!', 'success', () => {
                 window.location.href = 'livros.html';
             });
         }
     );
 }
 
-// Função para confirmar aluguel
-async function confirmarAluguel() {
+// Função para confirmar retirada
+async function confirmarRetirada() {
     if (!livroData || !usuarioData) {
         mostrarModal('Erro', 'Dados do livro ou usuário não encontrados.', 'error');
         return;
@@ -197,16 +197,16 @@ async function confirmarAluguel() {
     }
 
     mostrarModalConfirmacao(
-        'Confirmar Aluguel',
-        `Deseja confirmar o aluguel do livro "${livroData.titulo}"?`,
+        'Confirmar Retirada',
+        `Deseja confirmar a retirada do livro "${livroData.titulo}"?`,
         () => {
-            processarAluguel();
+            processarRetirada();
         }
     );
 }
 
-// Função para processar o aluguel
-async function processarAluguel() {
+// Função para processar a retirada
+async function processarRetirada() {
 
     // Desabilita o botão durante o processamento
     const btnConfirmar = document.querySelector('.btn-primary');
@@ -238,7 +238,7 @@ async function processarAluguel() {
 
             const mensagem = `Livro: ${data.emprestimo.livro_titulo}\n` +
                             `Autor: ${data.emprestimo.livro_autor}\n` +
-                            `Data do Aluguel: ${formatarData(data.emprestimo.data_emprestimo)}\n` +
+                            `Data da Retirada: ${formatarData(data.emprestimo.data_emprestimo)}\n` +
                             `Data de Devolução: ${formatarData(data.emprestimo.data_devolucao_prevista)}\n` +
                             `Aluno: ${data.emprestimo.usuario_nome} (RA: ${data.emprestimo.usuario_ra})`;
 
@@ -249,19 +249,19 @@ async function processarAluguel() {
                 window.location.href = 'livros.html';
             });
         } else {
-            mostrarModal('Erro', `Erro ao alugar livro: ${data.mensagem}`, 'error');
+            mostrarModal('Erro', `Erro ao retirar livro: ${data.mensagem}`, 'error');
             if (btnConfirmar) {
                 btnConfirmar.disabled = false;
-                btnConfirmar.textContent = 'Confirmar Aluguel';
+                btnConfirmar.textContent = 'Confirmar Retirada';
             }
         }
 
     } catch (error) {
-        console.error('Erro ao alugar livro:', error);
+        console.error('Erro ao retirar livro:', error);
         mostrarModal('Erro', 'Erro ao conectar com o servidor. Verifique se o backend está rodando!', 'error');
         if (btnConfirmar) {
             btnConfirmar.disabled = false;
-            btnConfirmar.textContent = 'Confirmar Aluguel';
+            btnConfirmar.textContent = 'Confirmar Retirada';
         }
     }
 }

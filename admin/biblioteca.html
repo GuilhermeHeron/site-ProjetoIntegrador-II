@@ -22,6 +22,8 @@
                 <li><a class="nav-link active" data-target="cadastro">Cadastro de Livros</a></li>
                 <li><a class="nav-link" data-target="gerenciamento">Gerenciamento de Livros</a></li>
                 <li><a class="nav-link" data-target="relatorios">Relatórios de Leitores</a></li>
+                <li><a class="nav-link" data-target="emprestados">Livros Emprestados</a></li>
+                <li><a class="nav-link" data-target="historico">Histórico de Empréstimos</a></li>
             </ul>
         </nav>
     </aside>
@@ -84,13 +86,69 @@
             <header class="page-header">
                 <h1>Relatório de Classificação dos Leitores</h1>
             </header>
+            
+            <!-- Filtro de classificação (rank) -->
+            <div class="filters-row">
+                <label for="filtroRank">Filtrar por rank:</label>
+                <select id="filtroRank">
+                    <option value="">Todos os ranks</option>
+                    <option value="INICIANTE">Iniciante</option>
+                    <option value="REGULAR">Regular</option>
+                    <option value="ATIVO">Ativo</option>
+                    <option value="EXTREMO">Extremo</option>
+                </select>
+            </div>
+
             <table id="relatoriosTable" class="display data-table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Nome do Leitor</th>
-                        <th>Livros Lidos (Semestre)</th>
+                        <th>Total de Livros Emprestados (Últimos 6 meses)</th>
                         <th>Classificação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados serão carregados dinamicamente do backend -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- SEÇÃO 4: LIVROS EMPRESTADOS (SEM DEVOLUÇÃO) -->
+        <section id="emprestados" class="content-section">
+            <header class="page-header">
+                <h1>Livros Emprestados e Sem Devolução</h1>
+            </header>
+            <table id="emprestadosTable" class="display data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Livro</th>
+                        <th>Data Empréstimo</th>
+                        <th>Data Devolução Prevista</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados serão carregados dinamicamente do backend -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- SEÇÃO 5: HISTÓRICO DE EMPRÉSTIMOS E DEVOLUÇÕES -->
+        <section id="historico" class="content-section">
+            <header class="page-header">
+                <h1>Todos os Empréstimos e Devoluções de Livros</h1>
+            </header>
+
+            <table id="historicoTable" class="display data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Livro</th>
+                        <th>Data</th>
+                        <th>Evento</th>
                     </tr>
                 </thead>
                 <tbody>

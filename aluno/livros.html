@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acervo da Biblioteca</title>
+    
+    <!-- CSS da Biblioteca DataTables -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <!-- Sidebar de filtros removida -->
+
+    <main class="main-content no-sidebar">
+        <header class="page-header with-widget-left">
+            <h1>Acervo de Livros</h1>
+            
+            <!-- NOVO: WIDGET DE GAMIFICAÇÃO -->
+            <div id="gamification-widget" class="gamification-status">
+                <span class="gamification-icon"></span>
+                <div class="gamification-text">
+                    <span class="gamification-title"></span>
+                    <span class="gamification-subtitle"></span>
+                </div>
+            </div>
+        </header>
+
+        <table id="booksTable" class="display">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Autor</th>
+                    <th>Categoria</th>
+                    <th>Disponibilidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Os livros serão carregados dinamicamente via JavaScript -->
+            </tbody>
+        </table>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="assets/js/modal.js"></script>
+    <script src="assets/js/script.js"></script>
+
+</body>
+</html>

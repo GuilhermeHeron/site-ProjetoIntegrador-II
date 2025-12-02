@@ -244,13 +244,17 @@ function atualizarHistorico(historico) {
             return data.toLocaleDateString('pt-BR');
         };
 
+        const isRetirado = item.tipo_evento === 'RETIRADO';
+        const icon = isRetirado ? '📖' : '✅';
+        const texto = isRetirado ? 'Retirado em' : 'Devolvido em';
+
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
         historyItem.innerHTML = `
-            <div class="history-icon">✅</div>
+            <div class="history-icon">${icon}</div>
             <div class="history-content">
                 <h4>${item.livro_titulo}</h4>
-                <p>Devolvido em ${formatarData(item.data_devolucao_real)}</p>
+                <p>${texto} ${formatarData(item.data)}</p>
             </div>
         `;
         historyList.appendChild(historyItem);

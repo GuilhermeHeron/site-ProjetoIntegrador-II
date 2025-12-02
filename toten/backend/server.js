@@ -2,6 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const { executarQuery } = require('../../conexao');
 
+// ============================================
+// [SIS-TOTEM-API] Backend do totem de autoatendimento
+// Responsável por listar livros disponíveis,
+// registrar retiradas/devoluções e emprestimos ativos
+// usados na interface de totem
+// ============================================
+
 const app = express();
 const PORT = 3003;
 
@@ -92,7 +99,7 @@ app.get('/livros/:id', async (req, res) => {
 });
 
 // ============================================
-// ROTA: ALUGAR LIVRO
+// ROTA: RETIRAR LIVRO
 // ============================================
 app.post('/alugar', async (req, res) => {
     try {
@@ -124,7 +131,7 @@ app.post('/alugar', async (req, res) => {
         if (usuario.status !== 'ATIVO') {
             return res.status(403).json({
                 sucesso: false,
-                mensagem: `Usuário ${usuario.status.toLowerCase()}. Não é possível alugar livros.`
+                mensagem: `Usuário ${usuario.status.toLowerCase()}. Não é possível retirar livros.`
             });
         }
 
@@ -194,7 +201,7 @@ app.post('/alugar', async (req, res) => {
 
         res.status(201).json({
             sucesso: true,
-            mensagem: 'Livro alugado com sucesso!',
+            mensagem: 'Livro retirado com sucesso!',
             emprestimo: {
                 id: resultado.insertId,
                 usuario_id: usuario.id,
@@ -209,10 +216,10 @@ app.post('/alugar', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Erro ao alugar livro:', error);
+        console.error('Erro ao retirar livro:', error);
         res.status(500).json({
             sucesso: false,
-            mensagem: 'Erro interno do servidor ao alugar livro',
+            mensagem: 'Erro interno do servidor ao retirar livro',
             erro: error.message
         });
     }

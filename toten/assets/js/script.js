@@ -49,7 +49,7 @@ async function carregarLivros() {
                     <td><div class="book-author">${livro.autor}</div></td>
                     <td>${livro.categoria}</td>
                     <td><span class="status status-available">Disponível</span></td>
-                    <td><button class="btn-alugar" data-livro-id="${livro.id}" data-livro-titulo="${livro.titulo}" data-livro-autor="${livro.autor}" data-livro-categoria="${livro.categoria}">Alugar</button></td>
+                    <td><button class="btn-retirar" data-livro-id="${livro.id}" data-livro-titulo="${livro.titulo}" data-livro-autor="${livro.autor}" data-livro-categoria="${livro.categoria}">Retirar</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -59,8 +59,8 @@ async function carregarLivros() {
             const tableBody = document.querySelector('#booksTable tbody');
             if (tableBody) {
                 tableBody.addEventListener('click', function(e) {
-                    // Verifica se o clique foi em um botão de alugar
-                    if (e.target && e.target.classList.contains('btn-alugar')) {
+                    // Verifica se o clique foi em um botão de retirar
+                    if (e.target && e.target.classList.contains('btn-retirar')) {
                         const button = e.target;
                         const livroId = button.getAttribute('data-livro-id');
                         const titulo = button.getAttribute('data-livro-titulo');

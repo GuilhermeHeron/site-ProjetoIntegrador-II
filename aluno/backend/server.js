@@ -2,6 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const { executarQuery } = require('../../conexao');
 
+// ============================================
+// [SIS-ALUNO-API] Backend da aplicação do aluno
+// Responsável por cadastro/login, empréstimos,
+// renovações, histórico e estatísticas individuais
+// ============================================
+
 const app = express();
 const PORT = 3001;
 
@@ -24,21 +30,6 @@ app.post('/cadastro', async (req, res) => {
                 mensagem: 'Todos os campos são obrigatórios!'
             });
         }
-
-        // Buscar o ID do cargo ALUNO
-        const cargos = await executarQuery(
-            'SELECT id FROM cargos WHERE nome = ?',
-            ['ALUNO']
-        );
-
-        if (!cargos || cargos.length === 0) {
-            return res.status(500).json({
-                sucesso: false,
-                mensagem: 'Erro interno: Cargo ALUNO não encontrado no banco de dados'
-            });
-        }
-
-        const cargo_id = cargos[0].id;
 
         // Verificar se o RA já existe
         const raExistente = await executarQuery(
@@ -66,11 +57,11 @@ app.post('/cadastro', async (req, res) => {
             });
         }
 
-        // Inserir novo aluno no banco de dados
+        // Inserir novo aluno no banco de dados (sem uso de cargos)
         const resultado = await executarQuery(
-            `INSERT INTO usuarios (nome_completo, email, ra, cargo_id, status, nivel_leitor) 
-             VALUES (?, ?, ?, ?, 'ATIVO', 'INICIANTE')`,
-            [nome_completo, email, ra, cargo_id]
+            `INSERT INTO usuarios (nome_completo, email, ra, status, nivel_leitor) 
+             VALUES (?, ?, ?, 'ATIVO', 'INICIANTE')`,
+            [nome_completo, email, ra]
         );
 
         res.status(201).json({
@@ -112,10 +103,8 @@ app.post('/login', async (req, res) => {
         // Buscar usuário pelo RA
         const usuarios = await executarQuery(
             `SELECT u.id, u.nome_completo, u.email, u.ra, u.status, 
-                    u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
-                    c.nome AS cargo
+                    u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas
              FROM usuarios u
-             INNER JOIN cargos c ON u.cargo_id = c.id
              WHERE u.ra = ?`,
             [ra]
         );
@@ -135,14 +124,6 @@ app.post('/login', async (req, res) => {
             return res.status(403).json({
                 sucesso: false,
                 mensagem: `Usuário ${usuario.status.toLowerCase()}. Entre em contato com o administrador.`
-            });
-        }
-
-        // Verificar se é um aluno (pode ser redundante, mas é uma validação extra)
-        if (usuario.cargo !== 'ALUNO') {
-            return res.status(403).json({
-                sucesso: false,
-                mensagem: 'Acesso restrito apenas para alunos.'
             });
         }
 
@@ -181,10 +162,8 @@ app.get('/usuario/:id', async (req, res) => {
 
         const usuarios = await executarQuery(
             `SELECT u.id, u.nome_completo, u.email, u.ra, u.status, 
-                    u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas,
-                    c.nome AS cargo
+                    u.total_livros_emprestados, u.nivel_leitor, u.total_conquistas
              FROM usuarios u
-             INNER JOIN cargos c ON u.cargo_id = c.id
              WHERE u.id = ?`,
             [id]
         );
@@ -267,13 +246,32 @@ app.get('/emprestimos/:usuario_id', async (req, res) => {
 });
 
 // ============================================
-// ROTA: HISTÓRICO DE EMPRÉSTIMOS DEVOLVIDOS
+// ROTA: HISTÓRICO DE EMPRÉSTIMOS (RETIRADOS E DEVOLVIDOS)
 // ============================================
 app.get('/historico/:usuario_id', async (req, res) => {
     try {
         const { usuario_id } = req.params;
 
-        const historico = await executarQuery(
+        // Buscar empréstimos ativos (retirados mas não devolvidos)
+        const emprestimosAtivos = await executarQuery(
+            `SELECT 
+                e.id,
+                e.livro_id,
+                l.titulo AS livro_titulo,
+                l.autor AS livro_autor,
+                c.nome AS livro_categoria,
+                e.data_emprestimo AS data,
+                'RETIRADO' AS tipo_evento,
+                NULL AS data_devolucao_real
+            FROM emprestimos e
+            INNER JOIN livros l ON e.livro_id = l.id
+            INNER JOIN categorias c ON l.categoria_id = c.id
+            WHERE e.usuario_id = ? AND e.status = 'ATIVO'`,
+            [usuario_id]
+        );
+
+        // Buscar empréstimos devolvidos (histórico)
+        const historicoDevolvidos = await executarQuery(
             `SELECT 
                 h.id,
                 h.livro_id,
@@ -281,24 +279,74 @@ app.get('/historico/:usuario_id', async (req, res) => {
                 l.autor AS livro_autor,
                 c.nome AS livro_categoria,
                 h.data_emprestimo,
-                h.data_devolucao_prevista,
-                h.data_devolucao_real,
-                h.dias_emprestado,
-                h.numero_renovacoes,
-                h.status_final,
-                h.condicao_devolucao
+                h.data_devolucao_real AS data,
+                'DEVOLVIDO' AS tipo_evento,
+                h.data_devolucao_real
             FROM historico_emprestimos h
             INNER JOIN livros l ON h.livro_id = l.id
             INNER JOIN categorias c ON l.categoria_id = c.id
-            WHERE h.usuario_id = ?
-            ORDER BY h.data_devolucao_real DESC
-            LIMIT 20`,
+            WHERE h.usuario_id = ?`,
             [usuario_id]
         );
 
+        // Combinar e ordenar: primeiro retirados, depois devolvidos, ordenados por data
+        const historicoCompleto = [];
+        
+        // Adicionar eventos de retirada
+        if (emprestimosAtivos && emprestimosAtivos.length > 0) {
+            emprestimosAtivos.forEach(emp => {
+                historicoCompleto.push({
+                    id: emp.id,
+                    livro_id: emp.livro_id,
+                    livro_titulo: emp.livro_titulo,
+                    livro_autor: emp.livro_autor,
+                    livro_categoria: emp.livro_categoria,
+                    data: emp.data,
+                    tipo_evento: 'RETIRADO',
+                    data_devolucao_real: null
+                });
+            });
+        }
+
+        // Adicionar eventos de devolução
+        if (historicoDevolvidos && historicoDevolvidos.length > 0) {
+            historicoDevolvidos.forEach(hist => {
+                historicoCompleto.push({
+                    id: hist.id,
+                    livro_id: hist.livro_id,
+                    livro_titulo: hist.livro_titulo,
+                    livro_autor: hist.livro_autor,
+                    livro_categoria: hist.livro_categoria,
+                    data: hist.data_emprestimo,
+                    tipo_evento: 'RETIRADO',
+                    data_devolucao_real: hist.data_devolucao_real
+                });
+                historicoCompleto.push({
+                    id: hist.id,
+                    livro_id: hist.livro_id,
+                    livro_titulo: hist.livro_titulo,
+                    livro_autor: hist.livro_autor,
+                    livro_categoria: hist.livro_categoria,
+                    data: hist.data_devolucao_real,
+                    tipo_evento: 'DEVOLVIDO',
+                    data_devolucao_real: hist.data_devolucao_real
+                });
+            });
+        }
+
+        // Ordenar por data (mais recente primeiro)
+        historicoCompleto.sort((a, b) => {
+            const dataA = new Date(a.data);
+            const dataB = new Date(b.data);
+            return dataB - dataA;
+        });
+
+        // Limitar a 40 itens (20 empréstimos com retirado + devolvido)
+        const historicoLimitado = historicoCompleto.slice(0, 40);
+
         res.status(200).json({
             sucesso: true,
-            historico: historico || []
+            historico: historicoLimitado
         });
 
     } catch (error) {
@@ -474,6 +522,81 @@ app.get('/estatisticas/:usuario_id', async (req, res) => {
     }
 });
 
+// ============================================
+// ROTA: LISTAR TODOS OS LIVROS COM STATUS
+// (UM REGISTRO POR ID, SEM AGRUPAR)
+// ============================================
+app.get('/livros', async (req, res) => {
+    try {
+        // 1) Busca todos os livros (igual ao admin, sem filtro de status)
+        const todosLivros = await executarQuery(
+            `SELECT 
+                l.id,
+                l.titulo,
+                l.autor,
+                c.nome AS categoria,
+                l.sinopse,
+                l.numero_paginas,
+                l.status AS status_livro
+            FROM livros l
+            INNER JOIN categorias c ON l.categoria_id = c.id
+            ORDER BY l.titulo ASC, l.autor ASC`
+        );
+
+        // 2) Busca todos os empréstimos ativos
+        const emprestimosAtivos = await executarQuery(
+            `SELECT DISTINCT livro_id 
+             FROM emprestimos 
+             WHERE status = 'ATIVO'`
+        );
+
+        const livrosEmprestados = new Set(emprestimosAtivos.map(e => e.livro_id));
+
+        // 3) Monta a lista final livro a livro (sem agrupar por título/autor)
+        const livrosProcessados = todosLivros.map(livro => {
+            const estaEmprestadoNaTabela = livrosEmprestados.has(livro.id);
+            const estaEmprestadoPorStatus = livro.status_livro === 'EMPRESTADO';
+
+            // Status que tornam o livro indisponível
+            const statusIndisponivel =
+                livro.status_livro === 'INDISPONIVEL' ||
+                livro.status_livro === 'MANUTENCAO' ||
+                livro.status_livro === 'RESERVADO';
+
+            // Disponível somente se:
+            // - não está emprestado
+            // - e não está em nenhum status de indisponibilidade
+            const disponivel = !estaEmprestadoNaTabela &&
+                               !estaEmprestadoPorStatus &&
+                               !statusIndisponivel;
+
+            return {
+                id: livro.id,
+                titulo: livro.titulo,
+                autor: livro.autor,
+                categoria: livro.categoria,
+                sinopse: livro.sinopse,
+                numero_paginas: livro.numero_paginas,
+                disponivel: disponivel
+            };
+        });
+
+        // 4) Retorna todos os livros (inclusive indisponíveis)
+        res.status(200).json({
+            sucesso: true,
+            livros: livrosProcessados
+        });
+
+    } catch (error) {
+        console.error('Erro ao listar livros:', error);
+        res.status(500).json({
+            sucesso: false,
+            mensagem: 'Erro interno do servidor ao listar livros',
+            erro: error.message
+        });
+    }
+});
+
 // Rota de teste
 app.get('/test', (req, res) => {
     res.json({ mensagem: 'Backend do aluno está funcionando!' });
@@ -490,5 +613,6 @@ app.listen(PORT, () => {
     console.log(`   GET  http://localhost:${PORT}/historico/:usuario_id`);
     console.log(`   POST http://localhost:${PORT}/renovar`);
     console.log(`   GET  http://localhost:${PORT}/estatisticas/:usuario_id`);
+    console.log(`   GET  http://localhost:${PORT}/livros`);
 });
 
